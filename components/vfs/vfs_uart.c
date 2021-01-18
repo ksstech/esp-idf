@@ -85,6 +85,20 @@ typedef struct {
     rx_func_t rx_func;
 } vfs_uart_context_t;
 
+#if		(CONFIG_IRMACS_UART_REDIR == 1) 			// AMM
+int		getcx(int ud) ;
+void	putcx(int c, int ud) ;
+void 	putcswap(int ud, int c) { putcx(c, ud) ; }
+
+#define VFS_CTX_DEFAULT_VAL(uart_dev) (vfs_uart_context_t) {\
+	.uart = (uart_dev),\
+	.peek_char = NONE,\
+	.tx_mode = DEFAULT_TX_MODE,\
+	.rx_mode = DEFAULT_RX_MODE,\
+	.tx_func = putcswap,\
+	.rx_func = getcx,\
+}
+#else
 #define VFS_CTX_DEFAULT_VAL(uart_dev) (vfs_uart_context_t) {\
     .uart = (uart_dev),\
     .peek_char = NONE,\
@@ -93,7 +107,7 @@ typedef struct {
     .tx_func = uart_tx_char,\
     .rx_func = uart_rx_char,\
 }
-
+#endif												// AMM
 //If the context should be dynamically initialized, remove this structure
 //and point s_ctx to allocated data.
 static vfs_uart_context_t s_context[UART_NUM] = {
