@@ -199,7 +199,7 @@ static i2c_clk_alloc_t i2c_clk_alloc[I2C_SCLK_MAX] = {
 static i2c_obj_t *p_i2c_obj[I2C_NUM_MAX] = {0};
 static void i2c_isr_handler_default(void *arg);
 static void IRAM_ATTR i2c_master_cmd_begin_static(i2c_port_t i2c_num);
-static esp_err_t IRAM_ATTR i2c_hw_fsm_reset(i2c_port_t i2c_num);
+esp_err_t IRAM_ATTR i2c_hw_fsm_reset(i2c_port_t i2c_num);
 
 static void i2c_hw_disable(i2c_port_t i2c_num)
 {
@@ -582,7 +582,7 @@ static esp_err_t i2c_master_clear_bus(i2c_port_t i2c_num)
  * If we remove the power supply for the slave during I2C is reading, or directly connect SDA or SCL to ground,
  * this would cause the I2C FSM get stuck in wrong state, all we can do is to reset the I2C hardware in this case.
  **/
-static esp_err_t i2c_hw_fsm_reset(i2c_port_t i2c_num)
+esp_err_t i2c_hw_fsm_reset(i2c_port_t i2c_num)
 {
 #if !SOC_I2C_SUPPORT_HW_FSM_RST
     int scl_low_period, scl_high_period;
