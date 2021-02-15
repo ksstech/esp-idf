@@ -1272,7 +1272,7 @@ According to the table, we can conclude that:
  - For LR enabled in {IDF_TARGET_NAME} station and the mode is NOT LR only mode, it's compatible with traditional 802.11 mode.
  - If both station and AP are {IDF_TARGET_NAME} devices and both of them enable LR mode, the negotiated mode supports LR.
 
-If the negotiated Wi-Fi mode supports both traditional 802.11 mode and LR mode, it's the WiFi driver's responsibility to automatically select the best data rate in different Wi-Fi mode and the application don't need to care about it.
+If the negotiated Wi-Fi mode supports both traditional 802.11 mode and LR mode, it's the Wi-Fi driver's responsibility to automatically select the best data rate in different Wi-Fi mode and the application don't need to care about it.
 
 LR Impacts to Traditional Wi-Fi device
 ***************************************
@@ -1300,7 +1300,7 @@ When to Use LR
 The general conditions for using LR are:
 
  - Both the AP and station are devices.
- - Long distance WiFi connection and data transmission is required.
+ - Long distance Wi-Fi connection and data transmission is required.
  - Data throughput requirements are very small, such as remote device control, etc.
 
 Wi-Fi Country Code
@@ -1459,6 +1459,26 @@ For establishing a secure connection, AP and Station negotiate and agree on the 
 
 Detailed information on creating certificates and how to run wpa2_enterprise example on {IDF_TARGET_NAME} can be found in :example:`wifi/wpa2_enterprise`.
 
+.. only:: esp32s2 or esp32c3
+
+Wi-Fi Location
+-------------------------------
+
+Wi-Fi Location will improve the accuracy of a device's location data beyond the Access Point, which will enable creation of new, feature-rich applications and services such as geo-fencing, network management, navigation and others. One of the protocols used to determine the device location with respect to the Access Point is Fine Timing Measurement which calculates Time-of-Flight of a WiFi frame.
+
+Fine Timing Measurement (FTM)
++++++++++++++++++++++++++++++
+
+FTM is used to measure Wi-Fi Round Trip Time (Wi-Fi RTT) which is the time a Wi-Fi signal takes to travel from a device to another device and back again. Using Wi-Fi RTT the distance between the devices can be calculated with a simple formula of `RTT * c / 2`, where c is the speed of light.
+FTM uses timestamps given by Wi-Fi interface hardware at the time of arrival or departure of frames exchanged between a pair of devices. One entity called FTM Initiator (mostly a Station device) discovers the FTM Responder (can be a Station or an Access Point) and negotiates to start an FTM procedure. The procedure uses multiple Action frames sent in bursts and its ACK's to gather the timestamps data. FTM Initiator gathers the data in the end to calculate an average Round-Trip-Time.
+{IDF_TARGET_NAME} supports FTM in below configuration:
+
+ - {IDF_TARGET_NAME} as FTM Initiator in Station mode.
+ - {IDF_TARGET_NAME} as FTM Responder in SoftAP mode.
+
+Distance measurement using RTT is not accurate, factors such as RF interference, multi-path travel, antenna orientation and lack of calibration increase these inaccuracies. For better results it is suggested to perform FTM between two {IDF_TARGET_NAME} devices as Station and SoftAP.
+Refer to IDF example :idf_file:`examples/wifi/ftm/README.md` for steps on how to setup and perform FTM.
+
 {IDF_TARGET_NAME} Wi-Fi Power-saving Mode
 -----------------------------------------
 
@@ -1528,8 +1548,8 @@ Preconditions of Using :cpp:func:`esp_wifi_80211_tx`
 Data rate
 +++++++++++++++++++++++++++++++++++++++++++++++
 
- - If there is no WiFi connection, the data rate is 1 Mbps.
- - If there is WiFi connection and the packet is from station to AP or from AP to station, the data rate is same as the Wi-Fi connection. Otherwise the data rate is 1 Mbps.
+ - If there is no Wi-Fi connection, the data rate is 1 Mbps.
+ - If there is Wi-Fi connection and the packet is from station to AP or from AP to station, the data rate is same as the Wi-Fi connection. Otherwise the data rate is 1 Mbps.
 
 Side-Effects to Avoid in Different Scenarios
 +++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1660,7 +1680,7 @@ Up to four GPIOs are connected to the four active high antenna_select pins. {IDF
 
 Although up to sixteen anteenas are supported, only one or two antennas can be simultaneously enabled for RX/TX. The API :cpp:func:`esp_wifi_set_ant()` is used to configure which antennas are enabled.
 
-The enabled antennas selecting algorithm is also configured by :cpp:func:`esp_wifi_set_ant()`. The RX/TX antenna mode can be WIFI_ANT_MODE_ANT0, WIFI_ANT_MODE_ANT1 or WIFI_ANT_MODE_AUTO. If the antenna mode is WIFI_ANT_MODE_ANT0, the enabled antenna 0 is selected for RX/TX data. If the antenna mode is WIFI_ANT_MODE_ANT1, the enabled antenna 1 is selected for RX/TX data. Otherwise, WiFi automatically selects the antenna that has better signal from the enabled antennas.
+The enabled antennas selecting algorithm is also configured by :cpp:func:`esp_wifi_set_ant()`. The RX/TX antenna mode can be WIFI_ANT_MODE_ANT0, WIFI_ANT_MODE_ANT1 or WIFI_ANT_MODE_AUTO. If the antenna mode is WIFI_ANT_MODE_ANT0, the enabled antenna 0 is selected for RX/TX data. If the antenna mode is WIFI_ANT_MODE_ANT1, the enabled antenna 1 is selected for RX/TX data. Otherwise, Wi-Fi automatically selects the antenna that has better signal from the enabled antennas.
 
 If the RX antenna mode is WIFI_ANT_MODE_AUTO, the default antenna mode also needs to be set. Because the RX antenna switching only happens when some conditions are met, e.g. the RX antenna starts to switch if the RSSI is lower than -65 dBm and if another antenna has better signal etc, RX uses the default antenna if the conditions are not met. If the default antenna mode is WIFI_ANT_MODE_ANT1, the enabled antenna 1 is used as the default RX antenna, otherwise the enabled antenna 0 is used as the default RX antenna.
 
@@ -1671,7 +1691,7 @@ Some limitations need to be considered:
 
 Following is the recommended scenarios to use the multiple antennas:
 
- - In Wi-Fi mode WIFI_MODE_STA, both RX/TX antenna modes are configured to WIFI_ANT_MODE_AUTO. The WiFi driver selects the better RX/TX antenna automatically.
+ - In Wi-Fi mode WIFI_MODE_STA, both RX/TX antenna modes are configured to WIFI_ANT_MODE_AUTO. The Wi-Fi driver selects the better RX/TX antenna automatically.
  - The RX antenna mode is configured to WIFI_ANT_MODE_AUTO. The TX antenna mode is configured to WIFI_ANT_MODE_ANT0 or WIFI_ANT_MODE_ANT1. The applications can choose to always select a specified antenna for TX, or implement their own TX antenna selecting algorithm, e.g. selecting the TX antenna mode based on the channel switch information etc.
  - Both RX/TX antenna modes are configured to WIFI_ANT_MODE_ANT0 or WIFI_ANT_MODE_ANT1.
 

@@ -1499,9 +1499,7 @@ configSTACK_DEPTH_TYPE uxTaskGetStackHighWaterMark2( TaskHandle_t xTask ) PRIVIL
  * INCLUDE_pxTaskGetStackStart must be set to 1 in FreeRTOSConfig.h for
  * this function to be available.
  *
- * Returns the highest stack memory address on architectures where the stack grows down
- * from high memory, and the lowest memory address on architectures where the
- * stack grows up from low memory.
+ * Returns the lowest stack memory address, regardless of whether the stack grows up or down.
  *
  * @param xTask Handle of the task associated with the stack returned.
  * Set xTask to NULL to return the stack of the calling task.
@@ -2529,7 +2527,7 @@ void vTaskInternalSetTimeOutState( TimeOut_t * const pxTimeOut ) PRIVILEGED_FUNC
 
 /*
  * This function fills array with TaskSnapshot_t structures for every task in the system.
- * Used by core dump facility to get snapshots of all tasks in the system.
+ * Used by panic handling code to get snapshots of all tasks in the system.
  * Only available when configENABLE_TASK_SNAPSHOT is set to 1.
  * @param pxTaskSnapshotArray Pointer to array of TaskSnapshot_t structures to store tasks snapshot data.
  * @param uxArraySize Size of tasks snapshots array.
@@ -2537,6 +2535,26 @@ void vTaskInternalSetTimeOutState( TimeOut_t * const pxTimeOut ) PRIVILEGED_FUNC
  * @return Number of elements stored in array.
  */
 UBaseType_t uxTaskGetSnapshotAll( TaskSnapshot_t * const pxTaskSnapshotArray, const UBaseType_t uxArraySize, UBaseType_t * const pxTcbSz );
+
+/*
+ * This function iterates over all tasks in the system.
+ * Used by panic handling code to iterate over tasks in the system.
+ * Only available when configENABLE_TASK_SNAPSHOT is set to 1.
+ * @note This function should not be used while FreeRTOS is running (as it doesn't acquire any locks).
+ * @param pxTask task handle.
+ * @return Handle for the next task. If pxTask is NULL, returns hadnle for the first task.
+ */
+TaskHandle_t pxTaskGetNext( TaskHandle_t pxTask );
+
+/*
+ * This function fills TaskSnapshot_t structure for specified task.
+ * Used by panic handling code to get snapshot of a task.
+ * Only available when configENABLE_TASK_SNAPSHOT is set to 1.
+ * @note This function should not be used while FreeRTOS is running (as it doesn't acquire any locks).
+ * @param pxTask task handle.
+ * @param pxTaskSnapshot address of TaskSnapshot_t structure to fill.
+ */
+void vTaskGetSnapshot( TaskHandle_t pxTask, TaskSnapshot_t *pxTaskSnapshot );
 
 /** @endcond */
 #ifdef __cplusplus

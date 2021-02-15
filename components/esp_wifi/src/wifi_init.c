@@ -56,6 +56,12 @@ uint64_t g_wifi_feature_caps =
 #if (CONFIG_ESP32_SPIRAM_SUPPORT | CONFIG_ESP32S2_SPIRAM_SUPPORT)
     CONFIG_FEATURE_CACHE_TX_BUF_BIT |
 #endif
+#if CONFIG_ESP_WIFI_FTM_INITIATOR_SUPPORT
+    CONFIG_FEATURE_FTM_INITIATOR_BIT |
+#endif
+#if CONFIG_ESP_WIFI_FTM_RESPONDER_SUPPORT
+    CONFIG_FEATURE_FTM_RESPONDER_BIT |
+#endif
 0;
 
 static bool s_wifi_adc_xpd_flag;
@@ -143,9 +149,13 @@ esp_err_t esp_wifi_deinit(void)
 #if CONFIG_FREERTOS_USE_TICKLESS_IDLE
 #if SOC_WIFI_HW_TSF
     esp_pm_unregister_skip_light_sleep_callback(esp_wifi_internal_is_tsf_active);
+    esp_pm_unregister_inform_out_light_sleep_overhead_callback(esp_wifi_internal_update_light_sleep_wake_ahead_time);
 #endif
 #endif
-
+#if CONFIG_MAC_BB_PD
+    esp_unregister_mac_bb_pd_callback(pm_mac_sleep);
+    esp_unregister_mac_bb_pu_callback(pm_mac_wakeup);
+#endif
     return err;
 }
 
@@ -175,6 +185,11 @@ static void esp_wifi_config_info(void)
     ESP_LOGI(TAG, "WiFi RX IRAM OP enabled");
 #endif
 
+#ifdef CONFIG_ESP_WIFI_SLP_IRAM_OPT
+    esp_wifi_internal_optimize_wake_ahead_time();
+    ESP_LOGI(TAG, "WiFi SLP IRAM OP enabled");
+#endif
+
 #ifdef CONFIG_LWIP_IRAM_OPTIMIZATION
     ESP_LOGI(TAG, "LWIP IRAM OP enabled");
 #endif
@@ -195,20 +210,37 @@ esp_err_t esp_wifi_init(const wifi_init_config_t *config)
         }
     }
 #endif
+
 #if CONFIG_FREERTOS_USE_TICKLESS_IDLE
+#if CONFIG_MAC_BB_PD
+    if (esp_register_mac_bb_pd_callback(pm_mac_sleep) != ESP_OK
+        || esp_register_mac_bb_pu_callback(pm_mac_wakeup) != ESP_OK) {
+
+        esp_unregister_mac_bb_pd_callback(pm_mac_sleep);
+        esp_unregister_mac_bb_pu_callback(pm_mac_wakeup);
+        return ESP_ERR_INVALID_ARG;
+    }
+#endif
+
 #if SOC_WIFI_HW_TSF
     esp_err_t ret = esp_pm_register_skip_light_sleep_callback(esp_wifi_internal_is_tsf_active);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to register skip light sleep callback (0x%x)", ret);
+#if CONFIG_MAC_BB_PD
+        esp_unregister_mac_bb_pd_callback(pm_mac_sleep);
+        esp_unregister_mac_bb_pu_callback(pm_mac_wakeup);
+#endif
+        return ret;
+    }
+    ret = esp_pm_register_inform_out_light_sleep_overhead_callback(esp_wifi_internal_update_light_sleep_wake_ahead_time);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to register inform light sleep overhead callback (0x%x)", ret);
         return ret;
     }
     esp_sleep_enable_wifi_wakeup();
 #endif
 #endif
-#if CONFIG_MAC_BB_PD
-    esp_mac_bb_pd_mem_init();
-    esp_wifi_internal_set_mac_sleep(true);
-#endif
+
 #if CONFIG_ESP_NETIF_TCPIP_ADAPTER_COMPATIBLE_LAYER
     esp_err_t err = tcpip_adapter_set_default_wifi_handlers();
     if (err != ESP_OK) {
@@ -220,6 +252,10 @@ esp_err_t esp_wifi_init(const wifi_init_config_t *config)
 #endif
     esp_err_t result = esp_wifi_init_internal(config);
     if (result == ESP_OK) {
+#if CONFIG_MAC_BB_PD
+        esp_mac_bb_pd_mem_init();
+        esp_wifi_internal_set_mac_sleep(true);
+#endif
         esp_wifi_set_debug_log();
 #if CONFIG_IDF_TARGET_ESP32
         s_wifi_mac_time_update_cb = esp_wifi_internal_update_mac_time;
@@ -236,8 +272,23 @@ esp_err_t esp_wifi_init(const wifi_init_config_t *config)
             return result;
         }
     }
-#if CONFIG_IDF_TARGET_ESP32S2
     adc2_cal_include(); //This enables the ADC2 calibration constructor at start up.
+
+#ifdef CONFIG_ESP_WIFI_FTM_REPORT_LOG_ENABLE
+    ftm_report_log_level_t log_lvl = {0};
+#ifdef CONFIG_ESP_WIFI_FTM_REPORT_SHOW_RTT
+    log_lvl.show_rtt = 1;
+#endif
+#ifdef CONFIG_ESP_WIFI_FTM_REPORT_SHOW_DIAG
+    log_lvl.show_diag = 1;
+#endif
+#ifdef CONFIG_ESP_WIFI_FTM_REPORT_SHOW_T1T2T3T4
+    log_lvl.show_t1t2t3t4 = 1;
+#endif
+#ifdef CONFIG_ESP_WIFI_FTM_REPORT_SHOW_RSSI
+    log_lvl.show_rxrssi = 1;
+#endif
+    esp_wifi_set_ftm_report_log_level(&log_lvl);
 #endif
     esp_wifi_config_info();
     return result;
@@ -261,6 +312,8 @@ void wifi_apb80m_release(void)
 #endif //CONFIG_PM_ENABLE
 
 /* Coordinate ADC power with other modules. This overrides the function from PHY lib. */
+// It seems that it is only required on ESP32, but we still compile it for all chips, in case it is
+// called by PHY unexpectedly.
 void set_xpd_sar(bool en)
 {
     if (s_wifi_adc_xpd_flag == en) {

@@ -280,7 +280,7 @@ SECTIONS
     . = SIZEOF(.flash.text);
     . = ALIGN(0x10000) + 0x20;
     _rodata_reserved_start = .;
-  } > drom0_0_seg
+  } > default_rodata_seg
 
   /* When modifying the alignment, don't forget to update tls_section_alignment in pxPortInitialiseStack */
   .flash.rodata : ALIGN(0x10)
@@ -359,7 +359,8 @@ SECTIONS
   /* Marks the end of IRAM code segment */
   .iram0.text_end (NOLOAD) :
   {
-    . = ALIGN (16);
+    /* C3 memprot requires 512 B alignment for split lines */
+    . = ALIGN (0x200);
     _iram_text_end = ABSOLUTE(.);
   } > iram0_0_seg
 

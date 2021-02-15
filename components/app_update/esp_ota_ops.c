@@ -39,23 +39,28 @@
 #include "sys/param.h"
 #include "esp_system.h"
 #include "esp_efuse.h"
+#include "esp_attr.h"
 
 #ifdef CONFIG_IDF_TARGET_ESP32
 #include "esp32/rom/crc.h"
 #elif CONFIG_IDF_TARGET_ESP32S2
 #include "esp32s2/rom/crc.h"
 #include "esp32s2/rom/secure_boot.h"
+#elif CONFIG_IDF_TARGET_ESP32C3
+#include "esp32c3/rom/crc.h"
+#include "esp32c3/rom/secure_boot.h"
 #endif
 
 #define SUB_TYPE_ID(i) (i & 0x0F)
 
+/* Partial_data is word aligned so no reallocation is necessary for encrypted flash write */
 typedef struct ota_ops_entry_ {
     uint32_t handle;
     const esp_partition_t *part;
     bool need_erase;
     uint32_t wrote_size;
     uint8_t partial_bytes;
-    uint8_t partial_data[16];
+    WORD_ALIGNED_ATTR uint8_t partial_data[16];
     LIST_ENTRY(ota_ops_entry_) entries;
 } ota_ops_entry_t;
 
@@ -891,7 +896,7 @@ esp_err_t esp_ota_erase_last_boot_app_partition(void)
     return ESP_OK;
 }
 
-#if CONFIG_IDF_TARGET_ESP32S2 && CONFIG_SECURE_BOOT_V2_ENABLED
+#if SOC_EFUSE_SECURE_BOOT_KEY_DIGESTS > 1 && CONFIG_SECURE_BOOT_V2_ENABLED
 esp_err_t esp_ota_revoke_secure_boot_public_key(esp_ota_secure_boot_public_key_index_t index) {
 
     if (!esp_secure_boot_enabled()) {

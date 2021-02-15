@@ -4,6 +4,10 @@
  *
  * Note: These are all weak symbols that could be overwritten from the ESP-IDF side.
  */
+PROVIDE ( _bss_end_btdm = 0x3fcefba8 );
+PROVIDE ( _bss_start_btdm = 0x3fcef454 );
+PROVIDE ( r_ke_mem_is_in_heap = 0x40009688 );
+
 PROVIDE ( BasePoint_x_256 = 0x3ff08238 );
 PROVIDE ( BasePoint_y_256 = 0x3ff08218 );
 PROVIDE ( Cache_Address_Through_DCache = 0x40051ebc );
@@ -649,6 +653,7 @@ PROVIDE ( ets_wdt_reset_cpu = 0x400551c0 );
 PROVIDE ( ets_write_char = 0x40045454 );
 PROVIDE ( ets_write_char_uart = 0x40045478 );
 PROVIDE ( event_empty = 0x3fcef5cc );
+PROVIDE ( lld_con_env = 0x3fcef5d8 );
 PROVIDE ( fixed_tx_time = 0x3ff08d3c );
 PROVIDE ( flash2spiram_instruction_offset = 0x40052e14 );
 PROVIDE ( flash2spiram_rodata_offset = 0x40052e24 );
@@ -1950,7 +1955,7 @@ PROVIDE ( spi_cache_mode_switch = 0x4004d9f0 );
 PROVIDE ( spi_common_set_dummy_output = 0x4004dcac );
 PROVIDE ( spi_common_set_flash_cs_timing = 0x4004dbf8 );
 PROVIDE ( spi_dummy_len_fix = 0x4004cb30 );
-PROVIDE ( spi_flash_attach = 0x4004e100 );
+PROVIDE ( esp_rom_spiflash_attach = 0x4004e100 );
 PROVIDE ( spi_flash_boot_attach = 0x4004e0a0 );
 PROVIDE ( spi_flash_chip_gd_get_io_mode = 0x4004f248 );
 PROVIDE ( spi_flash_chip_gd_probe = 0x4004f1d8 );

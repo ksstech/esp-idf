@@ -107,6 +107,7 @@ typedef struct {
     int                    csi_enable;             /**< WiFi channel state information enable flag */
     int                    ampdu_rx_enable;        /**< WiFi AMPDU RX feature enable flag */
     int                    ampdu_tx_enable;        /**< WiFi AMPDU TX feature enable flag */
+    int                    amsdu_tx_enable;        /**< WiFi AMSDU TX feature enable flag */
     int                    nvs_enable;             /**< WiFi NVS flash enable flag */
     int                    nano_enable;            /**< Nano option for printf/scan family enable flag */
     int                    rx_ba_win;              /**< WiFi Block Ack RX window size */
@@ -153,6 +154,12 @@ typedef struct {
 #define WIFI_AMPDU_TX_ENABLED        0
 #endif
 
+#if CONFIG_ESP32_WIFI_AMSDU_TX_ENABLED
+#define WIFI_AMSDU_TX_ENABLED        1
+#else
+#define WIFI_AMSDU_TX_ENABLED        0
+#endif
+
 #if CONFIG_ESP32_WIFI_NVS_ENABLED
 #define WIFI_NVS_ENABLED          1
 #else
@@ -196,6 +203,8 @@ extern uint64_t g_wifi_feature_caps;
 
 #define CONFIG_FEATURE_WPA3_SAE_BIT     (1<<0)
 #define CONFIG_FEATURE_CACHE_TX_BUF_BIT (1<<1)
+#define CONFIG_FEATURE_FTM_INITIATOR_BIT (1<<2)
+#define CONFIG_FEATURE_FTM_RESPONDER_BIT (1<<3)
 
 #define WIFI_INIT_CONFIG_DEFAULT() { \
     .event_handler = &esp_event_send_internal, \
@@ -210,6 +219,7 @@ extern uint64_t g_wifi_feature_caps;
     .csi_enable = WIFI_CSI_ENABLED,\
     .ampdu_rx_enable = WIFI_AMPDU_RX_ENABLED,\
     .ampdu_tx_enable = WIFI_AMPDU_TX_ENABLED,\
+    .amsdu_tx_enable = WIFI_AMSDU_TX_ENABLED,\
     .nvs_enable = WIFI_NVS_ENABLED,\
     .nano_enable = WIFI_NANO_FORMAT_ENABLED,\
     .rx_ba_win = WIFI_DEFAULT_RX_BA_WIN,\
@@ -1144,6 +1154,20 @@ esp_err_t esp_wifi_statis_dump(uint32_t modules);
   *    - ESP_ERR_WIFI_ARG: invalid argument
   */
 esp_err_t esp_wifi_set_rssi_threshold(int32_t rssi);
+
+/**
+  * @brief      Start an FTM Initiator session by sending FTM request
+  *             If successful, event WIFI_EVENT_FTM_REPORT is generated with the result of the FTM procedure
+  *
+  * @attention  Use this API only in Station mode
+  *
+  * @param      cfg  FTM Initiator session configuration
+  *
+  * @return
+  *    - ESP_OK: succeed
+  *    - others: failed
+  */
+esp_err_t esp_wifi_ftm_initiate_session(wifi_ftm_initiator_cfg_t *cfg);
 
 #ifdef __cplusplus
 }

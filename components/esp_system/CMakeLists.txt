@@ -1,8 +1,7 @@
-
-idf_build_get_property(target IDF_TARGET)
-# Remove when sleep is brought up on master for C3 TODO ESP32-C3 IDF-2571
-if(NOT (${target} STREQUAL "esp32c3") )
-    list(APPEND sleep_src "sleep_modes.c")
+if(BOOTLOADER_BUILD)
+    # Bootloader relies on some Kconfig options defined in esp_system.
+    idf_component_register()
+    return()
 endif()
 
 idf_component_register(SRCS "intr_alloc.c"
@@ -11,7 +10,7 @@ idf_component_register(SRCS "intr_alloc.c"
                             "system_api.c"
                             "startup.c"
                             "system_time.c"
-                            "${sleep_src}"
+                            "sleep_modes.c"
                     INCLUDE_DIRS include
                     PRIV_REQUIRES spi_flash
                                   # [refactor-todo] requirements due to init code,

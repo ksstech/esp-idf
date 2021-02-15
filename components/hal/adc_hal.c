@@ -12,10 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "soc/soc_caps.h"
 #include "hal/adc_hal.h"
 #include "hal/adc_hal_conf.h"
+#include "sdkconfig.h"
+#include <sys/param.h>
+
 
 #if CONFIG_IDF_TARGET_ESP32C3
+#include "soc/gdma_channel.h"
 #include "soc/soc.h"
 #include "esp_rom_sys.h"
 #endif
@@ -37,6 +42,7 @@ void adc_hal_deinit(void)
     adc_ll_set_power_manage(ADC_POWER_SW_OFF);
 }
 
+#ifndef CONFIG_IDF_TARGET_ESP32C3
 int adc_hal_convert(adc_ll_num_t adc_n, int channel, int *value)
 {
     adc_ll_rtc_enable_channel(adc_n, channel);
@@ -45,6 +51,158 @@ int adc_hal_convert(adc_ll_num_t adc_n, int channel, int *value)
     *value = adc_ll_rtc_get_convert_value(adc_n);
     return (int)adc_ll_rtc_analysis_raw_data(adc_n, (uint16_t)(*value));
 }
+#endif
+
+/*---------------------------------------------------------------
+                    ADC calibration setting
+---------------------------------------------------------------*/
+#if SOC_ADC_HW_CALIBRATION_V1
+// ESP32-S2 and C3 support HW offset calibration.
+
+void adc_hal_calibration_init(adc_ll_num_t adc_n)
+{
+    adc_ll_calibration_init(adc_n);
+}
+
+static uint32_t s_previous_init_code[SOC_ADC_PERIPH_NUM] = {-1, -1};
+
+void adc_hal_set_calibration_param(adc_ll_num_t adc_n, uint32_t param)
+{
+    if (param != s_previous_init_code[adc_n]) {
+        adc_ll_set_calibration_param(adc_n, param);
+        s_previous_init_code[adc_n] = param;
+    }
+}
+
+#if CONFIG_IDF_TARGET_ESP32S2
+static void cal_setup(adc_ll_num_t adc_n, adc_channel_t channel, adc_atten_t atten, bool internal_gnd)
+{
+    adc_hal_set_controller(adc_n, ADC_CTRL_RTC);    //Set controller
+
+    /* Enable/disable internal connect GND (for calibration). */
+    if (internal_gnd) {
+        adc_ll_rtc_disable_channel(adc_n);
+        adc_ll_set_atten(adc_n, 0, atten);  // Note: when disable all channel, HW auto select channel0 atten param.
+    } else {
+        adc_ll_rtc_enable_channel(adc_n, channel);
+        adc_ll_set_atten(adc_n, channel, atten);
+    }
+}
+
+static uint32_t read_cal_channel(adc_ll_num_t adc_n, int channel)
+{
+    adc_ll_rtc_start_convert(adc_n, channel);
+    while (adc_ll_rtc_convert_is_done(adc_n) != true);
+    return (uint32_t)adc_ll_rtc_get_convert_value(adc_n);
+}
+
+#elif CONFIG_IDF_TARGET_ESP32C3
+static void cal_setup(adc_ll_num_t adc_n, adc_channel_t channel, adc_atten_t atten, bool internal_gnd)
+{
+    adc_hal_set_controller(adc_n, ADC_CTRL_DIG);    //Set controller
+
+    adc_digi_config_t dig_cfg = {
+        .conv_limit_en = 0,
+        .conv_limit_num = 250,
+        .sample_freq_hz = SOC_ADC_SAMPLE_FREQ_THRES_HIGH,
+    };
+    adc_hal_digi_controller_config(&dig_cfg);
+
+    /* Enable/disable internal connect GND (for calibration). */
+    if (internal_gnd) {
+        const int esp32c3_invalid_chan = (adc_n == ADC_NUM_1)? 0xF: 0x1;
+        adc_ll_onetime_set_channel(adc_n, esp32c3_invalid_chan);
+    } else {
+        adc_ll_onetime_set_channel(adc_n, channel);
+    }
+    adc_ll_onetime_set_atten(atten);
+    adc_hal_adc1_onetime_sample_enable((adc_n == ADC_NUM_1));
+    adc_hal_adc2_onetime_sample_enable((adc_n == ADC_NUM_2));
+}
+
+static uint32_t read_cal_channel(adc_ll_num_t adc_n, int channel)
+{
+    adc_ll_intr_clear(ADC_LL_INTR_ADC1_DONE | ADC_LL_INTR_ADC2_DONE);
+    adc_ll_onetime_start(false);
+    esp_rom_delay_us(5);
+    adc_ll_onetime_start(true);
+
+    while(!adc_ll_intr_get_raw(ADC_LL_INTR_ADC1_DONE | ADC_LL_INTR_ADC2_DONE));
+
+    uint32_t read_val = -1;
+    if (adc_n == ADC_NUM_1) {
+        read_val = adc_ll_adc1_read();
+    } else if (adc_n == ADC_NUM_2) {
+        read_val = adc_ll_adc2_read();
+        if (adc_ll_analysis_raw_data(adc_n, read_val)) {
+            return -1;
+        }
+    }
+    return read_val;
+}
+#endif //CONFIG_IDF_TARGET_*
+
+#define ADC_HAL_CAL_TIMES        (10)
+#define ADC_HAL_CAL_OFFSET_RANGE (4096)
+
+uint32_t adc_hal_self_calibration(adc_ll_num_t adc_n, adc_channel_t channel, adc_atten_t atten, bool internal_gnd)
+{
+    if (adc_n == ADC_NUM_2) {
+        adc_arbiter_t config = ADC_ARBITER_CONFIG_DEFAULT();
+        adc_hal_arbiter_config(&config);
+    }
+
+    cal_setup(adc_n, channel, atten, internal_gnd);
+
+    adc_ll_calibration_prepare(adc_n, channel, internal_gnd);
+
+    uint32_t code_list[ADC_HAL_CAL_TIMES] = {0};
+    uint32_t code_sum = 0;
+    uint32_t code_h = 0;
+    uint32_t code_l = 0;
+    uint32_t chk_code = 0;
+
+    for (uint8_t rpt = 0 ; rpt < ADC_HAL_CAL_TIMES ; rpt ++) {
+        code_h = ADC_HAL_CAL_OFFSET_RANGE;
+        code_l = 0;
+        chk_code = (code_h + code_l) / 2;
+        adc_ll_set_calibration_param(adc_n, chk_code);
+        uint32_t self_cal = read_cal_channel(adc_n, channel);
+        while (code_h - code_l > 1) {
+            if (self_cal == 0) {
+                code_h = chk_code;
+            } else {
+                code_l = chk_code;
+            }
+            chk_code = (code_h + code_l) / 2;
+            adc_ll_set_calibration_param(adc_n, chk_code);
+            self_cal = read_cal_channel(adc_n, channel);
+            if ((code_h - code_l == 1)) {
+                chk_code += 1;
+                adc_ll_set_calibration_param(adc_n, chk_code);
+                self_cal = read_cal_channel(adc_n, channel);
+            }
+        }
+        code_list[rpt] = chk_code;
+        code_sum += chk_code;
+    }
+
+    code_l = code_list[0];
+    code_h = code_list[0];
+    for (uint8_t i = 0 ; i < ADC_HAL_CAL_TIMES ; i++) {
+        code_l = MIN(code_l, code_list[i]);
+        code_h = MAX(code_h, code_list[i]);
+    }
+
+    chk_code = code_h + code_l;
+    uint32_t ret = ((code_sum - chk_code) % (ADC_HAL_CAL_TIMES - 2) < 4)
+           ? (code_sum - chk_code) / (ADC_HAL_CAL_TIMES - 2)
+           : (code_sum - chk_code) / (ADC_HAL_CAL_TIMES - 2) + 1;
+
+    adc_ll_calibration_finish(adc_n);
+    return ret;
+}
+#endif //SOC_ADC_HW_CALIBRATION_V1
 
 #if CONFIG_IDF_TARGET_ESP32C3
 //This feature is currently supported on ESP32C3, will be supported on other chips soon
@@ -108,6 +266,8 @@ void adc_hal_digi_start(adc_dma_hal_context_t *adc_dma_ctx, adc_dma_hal_config_t
     adc_ll_digi_dma_enable();
     //enable sar adc timer
     adc_ll_digi_trigger_enable();
+    //reset the adc state
+    adc_ll_digi_reset();
 }
 
 void adc_hal_digi_stop(adc_dma_hal_context_t *adc_dma_ctx, adc_dma_hal_config_t *dma_config)
@@ -124,6 +284,9 @@ void adc_hal_digi_init(adc_dma_hal_context_t *adc_dma_ctx, adc_dma_hal_config_t 
     gdma_ll_enable_clock(adc_dma_ctx->dev, true);
     gdma_ll_clear_interrupt_status(adc_dma_ctx->dev, dma_config->dma_chan, UINT32_MAX);
     gdma_ll_rx_connect_to_periph(adc_dma_ctx->dev, dma_config->dma_chan, SOC_GDMA_TRIG_PERIPH_ADC0);
+
+    adc_ll_adc1_onetime_sample_enable(false);
+    adc_ll_adc2_onetime_sample_enable(false);
 }
 
 /*---------------------------------------------------------------
@@ -139,7 +302,7 @@ void adc_hal_onetime_start(adc_digi_config_t *adc_digi_config)
      * This limitation will be removed in hardware future versions.
      *
      */
-    uint32_t digi_clk = APB_CLK_FREQ / (adc_digi_config->dig_clk.div_num + adc_digi_config->dig_clk.div_a / adc_digi_config->dig_clk.div_b + 1);
+    uint32_t digi_clk = APB_CLK_FREQ / (ADC_LL_CLKM_DIV_NUM_DEFAULT + ADC_LL_CLKM_DIV_A_DEFAULT / ADC_LL_CLKM_DIV_B_DEFAULT + 1);
     //Convert frequency to time (us). Since decimals are removed by this division operation. Add 1 here in case of the fact that delay is not enough.
     uint32_t delay = (1000 * 1000) / digi_clk + 1;
     //3 ADC digital controller clock cycle
@@ -157,20 +320,12 @@ void adc_hal_onetime_start(adc_digi_config_t *adc_digi_config)
 
 void adc_hal_adc1_onetime_sample_enable(bool enable)
 {
-    if (enable) {
-        adc_ll_adc1_onetime_sample_ena();
-    } else {
-        adc_ll_adc1_onetime_sample_dis();
-    }
+    adc_ll_adc1_onetime_sample_enable(enable);
 }
 
 void adc_hal_adc2_onetime_sample_enable(bool enable)
 {
-    if (enable) {
-        adc_ll_adc2_onetime_sample_ena();
-    } else {
-        adc_ll_adc2_onetime_sample_dis();
-    }
+    adc_ll_adc2_onetime_sample_enable(enable);
 }
 
 void adc_hal_onetime_channel(adc_ll_num_t unit, adc_channel_t channel)
@@ -183,14 +338,17 @@ void adc_hal_set_onetime_atten(adc_atten_t atten)
     adc_ll_onetime_set_atten(atten);
 }
 
-uint32_t adc_hal_adc1_read(void)
+esp_err_t adc_hal_single_read(adc_ll_num_t unit, int *out_raw)
 {
-    return adc_ll_adc1_read();
-}
-
-uint32_t adc_hal_adc2_read(void)
-{
-    return adc_ll_adc2_read();
+    if (unit == ADC_NUM_1) {
+        *out_raw = adc_ll_adc1_read();
+    } else if (unit == ADC_NUM_2) {
+        *out_raw = adc_ll_adc2_read();
+        if (adc_ll_analysis_raw_data(unit, *out_raw)) {
+            return ESP_ERR_INVALID_STATE;
+        }
+    }
+    return ESP_OK;
 }
 
 //--------------------INTR-------------------------------

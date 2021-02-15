@@ -42,6 +42,7 @@ typedef enum {
     ESP_PD_DOMAIN_RTC_SLOW_MEM,    //!< RTC slow memory
     ESP_PD_DOMAIN_RTC_FAST_MEM,    //!< RTC fast memory
     ESP_PD_DOMAIN_XTAL,            //!< XTAL oscillator
+    ESP_PD_DOMAIN_CPU,             //!< CPU core
     ESP_PD_DOMAIN_MAX              //!< Number of domains
 } esp_sleep_pd_domain_t;
 
@@ -94,6 +95,7 @@ typedef esp_sleep_source_t esp_sleep_wakeup_cause_t;
  */
 esp_err_t esp_sleep_disable_wakeup_source(esp_sleep_source_t source);
 
+#if SOC_ULP_SUPPORTED
 /**
  * @brief Enable wakeup by ULP coprocessor
  * @note In revisions 0 and 1 of the ESP32, ULP wakeup source
@@ -107,6 +109,8 @@ esp_err_t esp_sleep_disable_wakeup_source(esp_sleep_source_t source);
  */
 esp_err_t esp_sleep_enable_ulp_wakeup(void);
 
+#endif // SOC_ULP_SUPPORTED
+
 /**
  * @brief Enable wakeup by timer
  * @param time_in_us  time before wakeup, in microseconds
@@ -115,6 +119,8 @@ esp_err_t esp_sleep_enable_ulp_wakeup(void);
  *      - ESP_ERR_INVALID_ARG if value is out of range (TBD)
  */
 esp_err_t esp_sleep_enable_timer_wakeup(uint64_t time_in_us);
+
+#if SOC_TOUCH_SENSOR_NUM > 0
 
 /**
  * @brief Enable wakeup by touch sensor
@@ -142,6 +148,10 @@ esp_err_t esp_sleep_enable_touchpad_wakeup(void);
  * @return touch pad which caused wakeup
  */
 touch_pad_t esp_sleep_get_touchpad_wakeup_status(void);
+
+#endif // SOC_TOUCH_SENSOR_NUM > 0
+
+#if SOC_PM_SUPPORT_EXT_WAKEUP
 
 /**
  * @brief Returns true if a GPIO number is valid for use as wakeup source.
@@ -211,6 +221,8 @@ esp_err_t esp_sleep_enable_ext0_wakeup(gpio_num_t gpio_num, int level);
  *        or mode is invalid
  */
 esp_err_t esp_sleep_enable_ext1_wakeup(uint64_t mask, esp_sleep_ext1_wakeup_mode_t mode);
+
+#endif // SOC_PM_SUPPORT_EXT_WAKEUP
 
 /**
  * @brief Enable wakeup from light sleep using GPIOs
@@ -397,6 +409,51 @@ void esp_sleep_gpio_status_init(void);
  */
 void esp_sleep_gpio_status_switch_configure(bool enable);
 #endif
+
+#if CONFIG_MAC_BB_PD
+/**
+ * @brief Function type for stub to run mac bb power down.
+ */
+typedef void (* mac_bb_power_down_cb_t)(void);
+
+/**
+ * @brief Function type for stub to run mac bb power up.
+ */
+typedef void (* mac_bb_power_up_cb_t)(void);
+
+/**
+ * @brief  Registet mac bb power down callback.
+ * @param  cb mac bb power down callback.
+ * @return
+ *  - ESP_OK on success
+ */
+esp_err_t esp_register_mac_bb_pd_callback(mac_bb_power_down_cb_t cb);
+
+/**
+ * @brief  Unregistet mac bb power down callback.
+ * @param  cb mac bb power down callback.
+ * @return
+ *  - ESP_OK on success
+ */
+esp_err_t esp_unregister_mac_bb_pd_callback(mac_bb_power_down_cb_t cb);
+
+/**
+ * @brief  Registet mac bb power up callback.
+ * @param  cb mac bb power up callback.
+ * @return
+ *  - ESP_OK on success
+ */
+esp_err_t esp_register_mac_bb_pu_callback(mac_bb_power_up_cb_t cb);
+
+/**
+ * @brief  Unregistet mac bb power up callback.
+ * @param  cb mac bb power up callback.
+ * @return
+ *  - ESP_OK on success
+ */
+esp_err_t esp_unregister_mac_bb_pu_callback(mac_bb_power_up_cb_t cb);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

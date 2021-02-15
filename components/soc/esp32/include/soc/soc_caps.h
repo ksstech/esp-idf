@@ -72,12 +72,14 @@
 #define SOC_ULP_SUPPORTED           1
 #define SOC_RTC_SLOW_MEM_SUPPORTED  1
 #define SOC_CCOMP_TIMER_SUPPORTED   1
+#define SOC_EFUSE_SECURE_BOOT_KEY_DIGESTS 1
 
 /*-------------------------- ADC CAPS ----------------------------------------*/
 #define SOC_ADC_PERIPH_NUM              (2)
 #define SOC_ADC_PATT_LEN_MAX            (16)
 #define SOC_ADC_CHANNEL_NUM(PERIPH_NUM) ((PERIPH_NUM==0)? 8: 10)
 #define SOC_ADC_MAX_CHANNEL_NUM         (10)
+#define SOC_ADC_MAX_BITWIDTH            (12)
 
 /**
  * Check if adc support digital controller (DMA) mode.
@@ -86,6 +88,7 @@
  *      - 0 : not support;
  */
 #define SOC_ADC_SUPPORT_DMA_MODE(PERIPH_NUM) ((PERIPH_NUM==0)? 1: 0)
+#define SOC_ADC_SUPPORT_RTC_CTRL        1
 
 /*-------------------------- BROWNOUT CAPS -----------------------------------*/
 #if SOC_CAPS_ECO_VER >= 1
@@ -267,6 +270,9 @@
 #define SOC_AES_SUPPORT_AES_128 (1)
 #define SOC_AES_SUPPORT_AES_192 (1)
 #define SOC_AES_SUPPORT_AES_256 (1)
+
+/*-------------------------- Power Management CAPS ---------------------------*/
+#define SOC_PM_SUPPORT_EXT_WAKEUP       (1)
 
 /* ---------------------------- Compatibility ------------------------------- */
 #define SOC_CAN_SUPPORTED                   SOC_TWAI_SUPPORTED

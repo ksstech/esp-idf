@@ -24,6 +24,14 @@
 #include "esp_rom_sys.h"
 #include "esp_timer.h"
 
+#if CONFIG_IDF_TARGET_ESP32S2
+#include "esp32s2/rom/cache.h"
+#elif CONFIG_IDF_TARGET_ESP32S3
+#include "esp32s3/rom/cache.h"
+#elif CONFIG_IDF_TARGET_ESP32C3
+#include "esp32c3/rom/cache.h"
+#endif
+
 #define FUNC_SPI    1
 
 static uint8_t sector_buf[4096];
@@ -129,17 +137,25 @@ typedef void (*flash_test_func_t)(const esp_partition_t *part);
 
    These tests run for all the flash chip configs shown in config_list, below (internal and external).
  */
-#if defined(CONFIG_SPIRAM) || TEMPORARY_DISABLED_FOR_TARGETS(ESP32C3)
+#if defined(CONFIG_SPIRAM)
 
 #define FLASH_TEST_CASE_3(STR, FUNCT_TO_RUN)
 #define FLASH_TEST_CASE_3_IGNORE(STR, FUNCT_TO_RUN)
-#else
+#else //CONFIG_SPIRAM
+#if !CONFIG_IDF_TARGET_ESP32C3
 #define FLASH_TEST_CASE_3(STR, FUNC_TO_RUN) \
     TEST_CASE(STR", 3 chips", "[esp_flash_3][test_env=UT_T1_ESP_FLASH]") {flash_test_func(FUNC_TO_RUN, TEST_CONFIG_NUM);}
 
 #define FLASH_TEST_CASE_3_IGNORE(STR, FUNC_TO_RUN) \
     TEST_CASE(STR", 3 chips", "[esp_flash_3][test_env=UT_T1_ESP_FLASH][ignore]") {flash_test_func(FUNC_TO_RUN, TEST_CONFIG_NUM);}
-#endif
+#else //CONFIG_IDF_TARGET_ESP32C3
+#define FLASH_TEST_CASE_3(STR, FUNC_TO_RUN) \
+    TEST_CASE(STR", 2 chips", "[esp_flash_2][test_env=UT_T1_ESP_FLASH]") {flash_test_func(FUNC_TO_RUN, TEST_CONFIG_NUM);}
+
+#define FLASH_TEST_CASE_3_IGNORE(STR, FUNC_TO_RUN) \
+    TEST_CASE(STR", 2 chips", "[esp_flash_2][test_env=UT_T1_ESP_FLASH][ignore]") {flash_test_func(FUNC_TO_RUN, TEST_CONFIG_NUM);}
+#endif // !CONFIG_IDF_TARGET_ESP32C3
+#endif //CONFIG_SPIRAM
 
 //currently all the configs are the same with esp_flash_spi_device_config_t, no more information required
 typedef esp_flash_spi_device_config_t flashtest_config_t;
@@ -188,7 +204,6 @@ flashtest_config_t config_list[] = {
 #elif CONFIG_IDF_TARGET_ESP32S2
 flashtest_config_t config_list[] = {
     FLASHTEST_CONFIG_COMMON,
-    /* No runners for esp32s2 for these config yet */
     {
         .io_mode = TEST_SPI_READ_MODE,
         .speed = TEST_SPI_SPEED,
@@ -222,8 +237,11 @@ flashtest_config_t config_list[] = {
 };
 #elif CONFIG_IDF_TARGET_ESP32C3
 flashtest_config_t config_list[] = {
-    FLASHTEST_CONFIG_COMMON,
-    /* No runners for esp32c3 for these config yet */
+    /* No SPI1 CS1 flash on esp32c3 test */
+    {
+        /* no need to init */
+        .host_id = -1,
+    },
     {
         .io_mode = TEST_SPI_READ_MODE,
         .speed = TEST_SPI_SPEED,
@@ -606,6 +624,50 @@ void test_erase_large_region(const esp_partition_t *part)
 FLASH_TEST_CASE("SPI flash erase large region", test_erase_large_region);
 FLASH_TEST_CASE_3("SPI flash erase large region", test_erase_large_region);
 
+#if CONFIG_SPI_FLASH_AUTO_SUSPEND
+void esp_test_for_suspend(void)
+{
+    /*clear content in cache*/
+#if !CONFIG_IDF_TARGET_ESP32C3
+    Cache_Invalidate_DCache_All();
+#endif
+    Cache_Invalidate_ICache_All();
+    ESP_LOGI(TAG, "suspend test begins:");
+    printf("run into test suspend function\n");
+    printf("print something when flash is erasing:\n");
+    printf("aaaaa bbbbb zzzzz fffff qqqqq ccccc\n");
+}
+
+static volatile bool task_erase_end, task_suspend_end = false;
+void task_erase_large_region(void *arg)
+{
+    esp_partition_t *part = (esp_partition_t *)arg;
+    test_erase_large_region(part);
+    task_erase_end = true;
+    vTaskDelete(NULL);
+}
+
+void task_request_suspend(void *arg)
+{
+    vTaskDelay(2);
+    ESP_LOGI(TAG, "flash go into suspend");
+    esp_test_for_suspend();
+    task_suspend_end = true;
+    vTaskDelete(NULL);
+}
+
+static void test_flash_suspend_resume(const esp_partition_t* part)
+{
+    xTaskCreatePinnedToCore(task_request_suspend, "suspend", 2048, (void *)"test_for_suspend", UNITY_FREERTOS_PRIORITY + 3, NULL, 0);
+    xTaskCreatePinnedToCore(task_erase_large_region, "test", 2048, (void *)part, UNITY_FREERTOS_PRIORITY + 2, NULL, 0);
+    while (!task_erase_end || !task_suspend_end) {
+    }
+    vTaskDelay(200);
+}
+
+FLASH_TEST_CASE("SPI flash suspend and resume test", test_flash_suspend_resume);
+#endif //CONFIG_SPI_FLASH_AUTO_SUSPEND
+
 static void test_write_protection(const esp_partition_t* part)
 {
     esp_flash_t* chip = part->flash_chip;
@@ -826,14 +888,12 @@ TEST_CASE("SPI flash test reading with all speed/mode permutations", "[esp_flash
 }
 
 #ifndef CONFIG_SPIRAM
-#if !TEMPORARY_DISABLED_FOR_TARGETS(ESP32C3)
 TEST_CASE("SPI flash test reading with all speed/mode permutations, 3 chips", "[esp_flash_3][test_env=UT_T1_ESP_FLASH]")
 {
     for (int i = 0; i < TEST_CONFIG_NUM; i++) {
         test_permutations_chip(&config_list[i]);
     }
 }
-#endif //TEMPORARY_DISABLED_FOR_TARGETS(ESP32C3)
 #endif
 
 
@@ -902,8 +962,7 @@ static void test_write_large_buffer(const esp_partition_t* part, const uint8_t *
     read_and_check(part, source, length);
 }
 
-#if !CONFIG_SPIRAM && !TEMPORARY_DISABLED_FOR_TARGETS(ESP32C3)
-/* No runners on C3, TODO ESP32-C3 IDF-2399 */
+#if !CONFIG_SPIRAM
 
 typedef struct {
     uint32_t us_start;

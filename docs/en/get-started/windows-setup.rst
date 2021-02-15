@@ -34,7 +34,7 @@ ESP-IDF Tools Installer
 
 The easiest way to install ESP-IDF's prerequisites is to download the ESP-IDF Tools installer from this URL:
 
-https://dl.espressif.com/dl/esp-idf-tools-setup-2.3.exe
+https://dl.espressif.com/dl/esp-idf-tools-setup-2.4.exe
 
 .. IMPORTANT: Next time this link is updated, please go to get-started/index.rst and rewrite the section under "Alternative File Downloads ... Windows". Then delete this comment.
 
@@ -47,12 +47,28 @@ The installer also downloads one of the ESP-IDF release versions, or offers to u
     mkdir %userprofile%\esp
 
 
+At the end of installation, if you checkout ``Run ESP-IDF Command Prompt (cmd.exe)``, a new Windows Power Shell, i.e. the ESP-IDF Command Prompt will pop up.
+
+.. figure:: ../../_static/esp-idf-installer-screenshot.png
+    :align: center
+    :alt: Completing the ESP-IDF Tools Setup Wizard with Run ESP-IDF Command Prompt (cmd.exe)
+    :figclass: align-center
+
+    Completing the ESP-IDF Tools Setup Wizard with Run ESP-IDF Command Prompt (cmd.exe)
+
+.. figure:: ../../_static/esp-idf-installer-command-prompt.png
+    :align: center
+    :alt: ESP-IDF Command Prompt
+    :figclass: align-center
+
+    ESP-IDF Command Prompt
+
 Using the Command Prompt
 ========================
 
 For the remaining Getting Started steps, we're going to use the Windows Command Prompt.
 
-ESP-IDF Tools Installer creates a shortcut in the Start menu to launch the ESP-IDF Command Prompt. This shortcut launches the Command Prompt (cmd.exe) and runs ``export.bat`` script to set up the environment variables (``PATH``, ``IDF_PATH`` and others). Inside this command prompt, all the installed tools are available.
+ESP-IDF Tools Installer also creates a shortcut in the Start menu to launch the ESP-IDF Command Prompt. This shortcut launches the Command Prompt (cmd.exe) and runs ``export.bat`` script to set up the environment variables (``PATH``, ``IDF_PATH`` and others). Inside this command prompt, all the installed tools are available.
 
 Note that this shortcut is specific to the ESP-IDF directory selected in the ESP-IDF Tools Installer. If you have multiple ESP-IDF directories on the computer (for example, to work with different versions of ESP-IDF), you have two options to use them:
 

@@ -96,6 +96,7 @@
 #include "esp_attr.h"
 #include "esp_debug_helpers.h"
 #include "esp_log.h"
+#include "esp_private/pm_trace.h"
 
 /**
  * @brief A variable is used to keep track of the critical section nesting.
@@ -151,11 +152,12 @@ void vPortSetupTimer(void)
 
     /* configure the timer */
     systimer_hal_init();
+    systimer_hal_connect_alarm_counter(SYSTIMER_ALARM_0, SYSTIMER_COUNTER_1);
     systimer_hal_enable_counter(SYSTIMER_COUNTER_1);
+    systimer_hal_counter_can_stall_by_cpu(SYSTIMER_COUNTER_1, 0, true);
     systimer_hal_set_alarm_period(SYSTIMER_ALARM_0, 1000000UL / CONFIG_FREERTOS_HZ);
     systimer_hal_select_alarm_mode(SYSTIMER_ALARM_0, SYSTIMER_ALARM_MODE_PERIOD);
     systimer_hal_enable_alarm_int(SYSTIMER_ALARM_0);
-    systimer_hal_connect_alarm_counter(SYSTIMER_ALARM_0, SYSTIMER_COUNTER_1);
 }
 
 void prvTaskExitError(void)
@@ -191,19 +193,30 @@ int vPortSetInterruptMask(void)
 StackType_t *pxPortInitialiseStack(StackType_t *pxTopOfStack, TaskFunction_t pxCode, void *pvParameters)
 {
     extern uint32_t __global_pointer$;
+    uint8_t* task_thread_local_start;
+    uint8_t* threadptr;
+    extern char _thread_local_start, _thread_local_end, _rodata_start;
 
-    /* Simulate the stack frame as it would be created by a context switch
-    interrupt. */
-    pxTopOfStack -= RV_STK_FRMSZ;
+    /* Byte pointer, so that subsequent calculations don't depend on sizeof(StackType_t). */
+    uint8_t* sp = (uint8_t*) pxTopOfStack;
 
-    RvExcFrame *frame = (RvExcFrame *)pxTopOfStack;
+    /* Set up TLS area */
+    uint32_t thread_local_sz = (uint32_t) (&_thread_local_end - &_thread_local_start);
+    thread_local_sz = ALIGNUP(0x10, thread_local_sz);
+    sp -= thread_local_sz;
+    task_thread_local_start = sp;
+    memcpy(task_thread_local_start, &_thread_local_start, thread_local_sz);
+    threadptr = task_thread_local_start - (&_thread_local_start - &_rodata_start);
+
+    /* Simulate the stack frame as it would be created by a context switch interrupt. */
+    sp -= RV_STK_FRMSZ;
+    RvExcFrame *frame = (RvExcFrame *)sp;
+    memset(frame, 0, sizeof(*frame));
     frame->ra = (UBaseType_t)prvTaskExitError;
     frame->mepc = (UBaseType_t)pxCode;
     frame->a0 = (UBaseType_t)pvParameters;
     frame->gp = (UBaseType_t)&__global_pointer$;
-    frame->a1 = 0x11111111;
-    frame->a2 = 0x22222222;
-    frame->a3 = 0x33333333;
+    frame->tp = (UBaseType_t)threadptr;
 
     //TODO: IDF-2393
     return (StackType_t *)frame;
@@ -215,6 +228,10 @@ IRAM_ATTR void vPortSysTickHandler(void *arg)
 
     systimer_ll_clear_alarm_int(SYSTIMER_ALARM_0);
 
+#ifdef CONFIG_PM_TRACE
+    ESP_PM_TRACE_ENTER(TICK, xPortGetCoreID());
+#endif
+
     if (!uxSchedulerRunning) {
         return;
     }
@@ -222,6 +239,10 @@ IRAM_ATTR void vPortSysTickHandler(void *arg)
     if (xTaskIncrementTick() != pdFALSE) {
         vPortYieldFromISR();
     }
+
+#ifdef CONFIG_PM_TRACE
+    ESP_PM_TRACE_EXIT(TICK, xPortGetCoreID());
+#endif
 }
 
 BaseType_t xPortStartScheduler(void)

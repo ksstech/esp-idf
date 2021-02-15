@@ -351,11 +351,11 @@ CI build 脚本中添加了检查功能，查找 RST 文件中的硬编码链接
 
 例如，以下 reStructuredText 内容：
 
-    This is a {\IDF_TARGET_NAME}, with /{\IDF_TARGET_PATH_NAME}/soc.c, compiled with `xtensa-{\IDF_TARGET_TOOLCHAIN_NAME}-elf-gcc` with `CONFIG_{\IDF_TARGET_CFG_PREFIX}_MULTI_DOC`
+    This is a {\IDF_TARGET_NAME}, with /{\IDF_TARGET_PATH_NAME}/soc.c, compiled with `{\IDF_TARGET_TOOLCHAIN_PREFIX}-gcc` with `CONFIG_{\IDF_TARGET_CFG_PREFIX}_MULTI_DOC`
 
 将在文档中渲染为：
 
-    This is a {IDF_TARGET_NAME}, with /{IDF_TARGET_PATH_NAME}/soc.c, compiled with `xtensa-{IDF_TARGET_TOOLCHAIN_NAME}-elf-gcc` with `CONFIG_{IDF_TARGET_CFG_PREFIX}_MULTI_DOC`.
+    This is a {IDF_TARGET_NAME}, with /{IDF_TARGET_PATH_NAME}/soc.c, compiled with `{IDF_TARGET_TOOLCHAIN_PREFIX}-gcc` with `CONFIG_{IDF_TARGET_CFG_PREFIX}_MULTI_DOC`.
 
 这一扩展也支持定义本地（在单个源文件中）替代名称的标记。请在 RST 文件的一行中插入下示定义语言：
 
@@ -492,7 +492,7 @@ Doxygen 的安装取决于操作系统：
 
 运行该命令后，系统将为 ESP-IDF 中所有可支持的语言和目标生成文档。这一过程将需要一些时间，但各文档会并行进行，速度取决于系统中 CPU 内核的个数（可通过 ``--sphinx-parallel-builds`` 选项修改该进程，详情可见 ``./build_docs.py --help``）。
 
-如需生成某一语言的单个文档，运行::
+如需生成某一目标 (esp32) 某一语种 (en) 的全部文档，即 ``en`` 文件夹下所有文档，运行::
 
     ./build_docs.py -l en -t esp32 build
 
@@ -504,7 +504,7 @@ Doxygen 的安装取决于操作系统：
 生成文档子集
 """"""""""""""
 
-生成整个文档可能速度较慢，因此，也可以选择只生成你所需的某个子集。
+编译某一语言的所有文档可能速度较慢，因此，也可以选择只生成所需的某个文档或部分所选文档。
 
 在指令中列出你需要生成的文档名称即可::
 
@@ -514,14 +514,14 @@ Doxygen 的安装取决于操作系统：
 
     ./build_docs.py -l en -t esp32 -i api-reference/peripherals/can.rst api-reference/peripherals/adc.rst build
 
-还可以生成通配文档::
+还可以使用通配符，选择生成所有符合条件的文档::
 
     ./build_docs.py -l en -t esp32 -i api-reference/peripherals/* build
 
 请注意，这一功能仅用于文档写作过程中的检查和测试。其生成的 HTML 页面并非渲染完成后的格式，比如，运行这一指令并不会生成一个列有所有文档的索引，而且如果其中涉及到任何还未生成的文档参考都将导致错误警报出现。
 
 
-生成 PDF 
+生成 PDF
 """"""""""""
 
 可以使用 ``build_docs.py`` 生成文档的 latex 和 PDF 格式，需安装以下 latex 工具包：

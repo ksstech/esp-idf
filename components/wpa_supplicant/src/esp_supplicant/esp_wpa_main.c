@@ -80,6 +80,8 @@ void  wpa_config_profile(void)
         wpa_set_profile(WPA_PROTO_WPA, esp_wifi_sta_get_prof_authmode_internal());
     } else if (esp_wifi_sta_prof_is_wpa2_internal() || esp_wifi_sta_prof_is_wpa3_internal()) {
         wpa_set_profile(WPA_PROTO_RSN, esp_wifi_sta_get_prof_authmode_internal());
+    } else if (esp_wifi_sta_prof_is_wapi_internal()) {
+        wpa_set_profile(WPA_PROTO_WAPI, esp_wifi_sta_get_prof_authmode_internal());
     } else {
         WPA_ASSERT(0);
     }
@@ -149,6 +151,18 @@ bool  wpa_ap_rx_eapol(void *hapd_data, void *sm_data, u8 *data, size_t data_len)
     return true;
 }
 
+void wpa_ap_get_peer_spp_msg(void *sm_data, bool *spp_cap, bool *spp_req)
+{
+    struct wpa_state_machine *sm = (struct wpa_state_machine *)sm_data;
+
+    if (!sm) {
+        return;
+    }
+
+    *spp_cap = sm->spp_sup.capable;
+    *spp_req = sm->spp_sup.require;
+}
+
 bool  wpa_deattach(void)
 {
     esp_wifi_sta_wpa2_ent_disable();
@@ -212,6 +226,7 @@ static inline void esp_supplicant_common_init(struct wpa_funcs *wpa_cb)
 
 int esp_supplicant_init(void)
 {
+    int ret = ESP_OK;
     struct wpa_funcs *wpa_cb;
 
     wpa_cb = (struct wpa_funcs *)os_malloc(sizeof(struct wpa_funcs));
@@ -230,6 +245,7 @@ int esp_supplicant_init(void)
     wpa_cb->wpa_ap_remove     = wpa_ap_remove;
     wpa_cb->wpa_ap_get_wpa_ie = wpa_ap_get_wpa_ie;
     wpa_cb->wpa_ap_rx_eapol   = wpa_ap_rx_eapol;
+    wpa_cb->wpa_ap_get_peer_spp_msg  = wpa_ap_get_peer_spp_msg;
     wpa_cb->wpa_ap_init       = hostap_init;
     wpa_cb->wpa_ap_deinit     = hostap_deinit;
 
@@ -242,7 +258,11 @@ int esp_supplicant_init(void)
 
     esp_wifi_register_wpa_cb_internal(wpa_cb);
 
-    return ESP_OK;
+#if CONFIG_WPA_WAPI_PSK
+    ret =  esp_wifi_internal_wapi_init();
+#endif
+
+    return ret;
 }
 
 int esp_supplicant_deinit(void)

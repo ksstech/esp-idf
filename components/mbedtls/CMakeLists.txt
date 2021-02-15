@@ -90,6 +90,26 @@ else()
     set(AES_PERIPHERAL_TYPE "dma")
 endif()
 
+if(SHA_PERIPHERAL_TYPE STREQUAL "dma")
+    target_include_directories(mbedcrypto PRIVATE "${COMPONENT_DIR}/port/sha/dma/include")
+
+    if(CONFIG_IDF_TARGET_ESP32S2)
+        set(SHA_DMA_SRCS "${COMPONENT_DIR}/port/sha/dma/esp_sha_crypto_dma_impl.c")
+    else()
+        set(SHA_DMA_SRCS "${COMPONENT_DIR}/port/sha/dma/esp_sha_gdma_impl.c")
+    endif()
+endif()
+
+if(AES_PERIPHERAL_TYPE STREQUAL "dma")
+    target_include_directories(mbedcrypto PRIVATE "${COMPONENT_DIR}/port/aes/dma/include")
+
+    if(CONFIG_IDF_TARGET_ESP32S2)
+        set(AES_DMA_SRCS "${COMPONENT_DIR}/port/aes/dma/esp_aes_crypto_dma_impl.c")
+    else()
+        set(AES_DMA_SRCS "${COMPONENT_DIR}/port/aes/dma/esp_aes_gdma_impl.c")
+    endif()
+endif()
+
 target_sources(mbedcrypto PRIVATE "${COMPONENT_DIR}/port/esp_hardware.c"
                                   "${COMPONENT_DIR}/port/esp_mem.c"
                                   "${COMPONENT_DIR}/port/esp_timing.c"
@@ -98,10 +118,13 @@ target_sources(mbedcrypto PRIVATE "${COMPONENT_DIR}/port/esp_hardware.c"
                                   "${COMPONENT_DIR}/port/aes/esp_aes_common.c"
                                   "${COMPONENT_DIR}/port/aes/${AES_PERIPHERAL_TYPE}/esp_aes.c"
                                   "${COMPONENT_DIR}/port/sha/${SHA_PERIPHERAL_TYPE}/sha.c"
+                                  "${SHA_DMA_SRCS}"
+                                  "${AES_DMA_SRCS}"
 )
 
+# CONFIG_ESP_TLS_USE_DS_PERIPHERAL can be enabled only for the supported targets.
 if(CONFIG_ESP_TLS_USE_DS_PERIPHERAL)
-    target_sources(mbedcrypto PRIVATE "${COMPONENT_DIR}/port/esp32s2/esp_rsa_sign_alt.c")
+    target_sources(mbedcrypto PRIVATE "${COMPONENT_DIR}/port/esp_ds/esp_rsa_sign_alt.c")
 endif()
 
 # Note: some mbedTLS hardware acceleration can be enabled/disabled by config.
@@ -149,14 +172,22 @@ if(CONFIG_MBEDTLS_DYNAMIC_BUFFER)
     endforeach()
 endif()
 
+if(CONFIG_MBEDTLS_HARDWARE_MPI)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=mbedtls_mpi_exp_mod")
+endif()
+
 set_property(TARGET mbedcrypto APPEND PROPERTY LINK_INTERFACE_LIBRARIES mbedtls)
 
 # Link mbedtls libraries to component library
 target_link_libraries(${COMPONENT_LIB} PUBLIC ${mbedtls_targets})
 
 if(CONFIG_ESP_TLS_USE_DS_PERIPHERAL)
-    # Link target (esp32s2) library to component library
-    target_link_libraries(${COMPONENT_LIB} PUBLIC ${target})
+    # Link target (e.g. esp32s2) library to component library
+    idf_component_get_property(target_lib ${target} COMPONENT_LIB)
+    set_property(TARGET mbedcrypto APPEND PROPERTY INTERFACE_LINK_LIBRARIES $<LINK_ONLY:${target_lib}>)
+    # The linker seems to be unable to resolve all the dependencies without increasing this
+    set_property(TARGET mbedcrypto APPEND PROPERTY LINK_INTERFACE_MULTIPLICITY 6)
+    target_link_libraries(${COMPONENT_LIB} PUBLIC ${target_lib})
 endif()
 
 # Link esp-cryptoauthlib to mbedtls

@@ -42,6 +42,9 @@
 #elif CONFIG_IDF_TARGET_ESP32C3
 #include "soc/rtc_cntl_reg.h"
 #include "soc/syscon_reg.h"
+#elif CONFIG_IDF_TARGET_ESP32S3
+#include "soc/rtc_cntl_reg.h"
+#include "soc/syscon_reg.h"
 #endif
 
 #if CONFIG_IDF_TARGET_ESP32
@@ -60,7 +63,7 @@ static uint8_t s_phy_access_ref = 0;
 
 #if CONFIG_MAC_BB_PD
 /* Reference of powering down MAC and BB */
-static uint8_t s_mac_bb_pd_ref = 0;
+static bool s_mac_bb_pu = true;
 #endif
 
 #if CONFIG_IDF_TARGET_ESP32
@@ -195,7 +198,7 @@ IRAM_ATTR void esp_phy_common_clock_disable(void)
     wifi_bt_common_module_disable();
 }
 
-IRAM_ATTR void esp_phy_enable(void)
+void esp_phy_enable(void)
 {
     _lock_acquire(&s_phy_access_lock);
 
@@ -207,7 +210,6 @@ IRAM_ATTR void esp_phy_enable(void)
         phy_update_wifi_mac_time(false, s_phy_rf_en_ts);
 #endif
         esp_phy_common_clock_enable();
-        phy_set_wifi_mode_only(0);
 
         if (s_is_phy_calibrated == false) {
             esp_phy_load_cal_and_init();
@@ -220,13 +222,19 @@ IRAM_ATTR void esp_phy_enable(void)
 #if CONFIG_IDF_TARGET_ESP32
         coex_bt_high_prio();
 #endif
+
+#if CONFIG_BT_ENABLED && (CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32S3)
+    extern void coex_pti_v2(void);
+    coex_pti_v2();
+#endif
+
     }
     s_phy_access_ref++;
 
     _lock_release(&s_phy_access_lock);
 }
 
-IRAM_ATTR void esp_phy_disable(void)
+void esp_phy_disable(void)
 {
     _lock_acquire(&s_phy_access_lock);
 
@@ -234,6 +242,10 @@ IRAM_ATTR void esp_phy_disable(void)
     if (s_phy_access_ref == 0) {
         // Disable PHY and RF.
         phy_close_rf();
+#if CONFIG_IDF_TARGET_ESP32C3
+        // Disable PHY temperature sensor
+        phy_xpd_tsens();
+#endif
 #if CONFIG_IDF_TARGET_ESP32
         // Update WiFi MAC time before disalbe WiFi/BT common peripheral clock
         phy_update_wifi_mac_time(true, esp_timer_get_time());
@@ -259,9 +271,7 @@ void esp_mac_bb_pd_mem_init(void)
 
 IRAM_ATTR void esp_mac_bb_power_up(void)
 {
-    uint32_t level = phy_enter_critical();
-
-    if (s_mac_bb_pd_mem != NULL && s_mac_bb_pd_ref == 0) {
+    if (s_mac_bb_pd_mem != NULL && (!s_mac_bb_pu)) {
         esp_phy_common_clock_enable();
         CLEAR_PERI_REG_MASK(RTC_CNTL_DIG_PWC_REG, RTC_CNTL_WIFI_FORCE_PD);
         SET_PERI_REG_MASK(SYSCON_WIFI_RST_EN_REG, SYSTEM_BB_RST | SYSTEM_FE_RST);
@@ -269,26 +279,20 @@ IRAM_ATTR void esp_mac_bb_power_up(void)
         CLEAR_PERI_REG_MASK(RTC_CNTL_DIG_ISO_REG, RTC_CNTL_WIFI_FORCE_ISO);
         phy_freq_mem_backup(false, s_mac_bb_pd_mem);
         esp_phy_common_clock_disable();
+        s_mac_bb_pu = true;
     }
-    s_mac_bb_pd_ref++;
-
-    phy_exit_critical(level);
 }
 
 IRAM_ATTR void esp_mac_bb_power_down(void)
 {
-    uint32_t level = phy_enter_critical();
-
-    s_mac_bb_pd_ref--;
-    if (s_mac_bb_pd_mem != NULL && s_mac_bb_pd_ref == 0) {
+    if (s_mac_bb_pd_mem != NULL && s_mac_bb_pu) {
         esp_phy_common_clock_enable();
         phy_freq_mem_backup(true, s_mac_bb_pd_mem);
         SET_PERI_REG_MASK(RTC_CNTL_DIG_ISO_REG, RTC_CNTL_WIFI_FORCE_ISO);
         SET_PERI_REG_MASK(RTC_CNTL_DIG_PWC_REG, RTC_CNTL_WIFI_FORCE_PD);
         esp_phy_common_clock_disable();
+        s_mac_bb_pu = false;
     }
-
-    phy_exit_critical(level);
 }
 #endif
 

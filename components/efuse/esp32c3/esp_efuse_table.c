@@ -17,7 +17,7 @@
 #include <assert.h>
 #include "esp_efuse_table.h"
 
-// md5_digest_table 2c7ba2aa68a2748d3de9a5d1fed59b9f
+// md5_digest_table f9a84eb22f94a7bc083b4c6817a33a59
 // This file was generated from the file esp_efuse_table.csv. DO NOT CHANGE THIS FILE MANUALLY.
 // If you want to change some fields, you need to change esp_efuse_table.csv file
 // then run `efuse_common_table` or `efuse_custom_table` command it will generate this file.
@@ -312,7 +312,7 @@ static const esp_efuse_desc_t ENABLE_SECURITY_DOWNLOAD[] = {
 };
 
 static const esp_efuse_desc_t UART_PRINT_CONTROL[] = {
-    {EFUSE_BLK0, 134, 2}, 	 // b00:force print. b01:control by GPIO46 - low level print. b10:control by GPIO46 - high level print. b11:force disable print.,
+    {EFUSE_BLK0, 134, 2}, 	 // b00:force print. b01:control by GPIO8 - low level print. b10:control by GPIO8 - high level print. b11:force disable print.,
 };
 
 static const esp_efuse_desc_t PIN_POWER_SELECTION[] = {
@@ -392,8 +392,64 @@ static const esp_efuse_desc_t SPI_PAD_CONFIG_D7[] = {
     {EFUSE_BLK1, 108, 6}, 	 // SPI_PAD_configure D7,
 };
 
-static const esp_efuse_desc_t SYS_DATA_PART1[] = {
-    {EFUSE_BLK2, 0, 256}, 	 // System configuration,
+static const esp_efuse_desc_t WAFER_VERSION[] = {
+    {EFUSE_BLK1, 114, 3}, 	 // WAFER version,
+};
+
+static const esp_efuse_desc_t PKG_VERSION[] = {
+    {EFUSE_BLK1, 117, 3}, 	 // Package version 0:ESP32C3,
+};
+
+static const esp_efuse_desc_t BLOCK1_VERSION[] = {
+    {EFUSE_BLK1, 120, 3}, 	 // BLOCK1 efuse version,
+};
+
+static const esp_efuse_desc_t OPTIONAL_UNIQUE_ID[] = {
+    {EFUSE_BLK2, 0, 128}, 	 // Optional unique 128-bit ID,
+};
+
+static const esp_efuse_desc_t BLOCK2_VERSION[] = {
+    {EFUSE_BLK2, 128, 3}, 	 // Version of BLOCK2,
+};
+
+static const esp_efuse_desc_t TEMP_CALIB[] = {
+    {EFUSE_BLK2, 131, 9}, 	 // Temperature calibration data,
+};
+
+static const esp_efuse_desc_t OCODE[] = {
+    {EFUSE_BLK2, 140, 8}, 	 // ADC OCode,
+};
+
+static const esp_efuse_desc_t ADC1_INIT_CODE_ATTEN0[] = {
+    {EFUSE_BLK2, 148, 10}, 	 // ADC1 init code at atten0,
+};
+
+static const esp_efuse_desc_t ADC1_INIT_CODE_ATTEN1[] = {
+    {EFUSE_BLK2, 158, 10}, 	 // ADC1 init code at atten1,
+};
+
+static const esp_efuse_desc_t ADC1_INIT_CODE_ATTEN2[] = {
+    {EFUSE_BLK2, 168, 10}, 	 // ADC1 init code at atten2,
+};
+
+static const esp_efuse_desc_t ADC1_INIT_CODE_ATTEN3[] = {
+    {EFUSE_BLK2, 178, 10}, 	 // ADC1 init code at atten3,
+};
+
+static const esp_efuse_desc_t ADC1_CAL_VOL_ATTEN0[] = {
+    {EFUSE_BLK2, 188, 10}, 	 // ADC1 calibration voltage at atten0,
+};
+
+static const esp_efuse_desc_t ADC1_CAL_VOL_ATTEN1[] = {
+    {EFUSE_BLK2, 198, 10}, 	 // ADC1 calibration voltage at atten1,
+};
+
+static const esp_efuse_desc_t ADC1_CAL_VOL_ATTEN2[] = {
+    {EFUSE_BLK2, 208, 10}, 	 // ADC1 calibration voltage at atten2,
+};
+
+static const esp_efuse_desc_t ADC1_CAL_VOL_ATTEN3[] = {
+    {EFUSE_BLK2, 218, 10}, 	 // ADC1 calibration voltage at atten3,
 };
 
 static const esp_efuse_desc_t USER_DATA[] = {
@@ -793,7 +849,7 @@ const esp_efuse_desc_t* ESP_EFUSE_ENABLE_SECURITY_DOWNLOAD[] = {
 };
 
 const esp_efuse_desc_t* ESP_EFUSE_UART_PRINT_CONTROL[] = {
-    &UART_PRINT_CONTROL[0],    		// b00:force print. b01:control by GPIO46 - low level print. b10:control by GPIO46 - high level print. b11:force disable print.
+    &UART_PRINT_CONTROL[0],    		// b00:force print. b01:control by GPIO8 - low level print. b10:control by GPIO8 - high level print. b11:force disable print.
     NULL
 };
 
@@ -892,8 +948,78 @@ const esp_efuse_desc_t* ESP_EFUSE_SPI_PAD_CONFIG_D7[] = {
     NULL
 };
 
-const esp_efuse_desc_t* ESP_EFUSE_SYS_DATA_PART1[] = {
-    &SYS_DATA_PART1[0],    		// System configuration
+const esp_efuse_desc_t* ESP_EFUSE_WAFER_VERSION[] = {
+    &WAFER_VERSION[0],    		// WAFER version
+    NULL
+};
+
+const esp_efuse_desc_t* ESP_EFUSE_PKG_VERSION[] = {
+    &PKG_VERSION[0],    		// Package version 0:ESP32C3
+    NULL
+};
+
+const esp_efuse_desc_t* ESP_EFUSE_BLOCK1_VERSION[] = {
+    &BLOCK1_VERSION[0],    		// BLOCK1 efuse version
+    NULL
+};
+
+const esp_efuse_desc_t* ESP_EFUSE_OPTIONAL_UNIQUE_ID[] = {
+    &OPTIONAL_UNIQUE_ID[0],    		// Optional unique 128-bit ID
+    NULL
+};
+
+const esp_efuse_desc_t* ESP_EFUSE_BLOCK2_VERSION[] = {
+    &BLOCK2_VERSION[0],    		// Version of BLOCK2
+    NULL
+};
+
+const esp_efuse_desc_t* ESP_EFUSE_TEMP_CALIB[] = {
+    &TEMP_CALIB[0],    		// Temperature calibration data
+    NULL
+};
+
+const esp_efuse_desc_t* ESP_EFUSE_OCODE[] = {
+    &OCODE[0],    		// ADC OCode
+    NULL
+};
+
+const esp_efuse_desc_t* ESP_EFUSE_ADC1_INIT_CODE_ATTEN0[] = {
+    &ADC1_INIT_CODE_ATTEN0[0],    		// ADC1 init code at atten0
+    NULL
+};
+
+const esp_efuse_desc_t* ESP_EFUSE_ADC1_INIT_CODE_ATTEN1[] = {
+    &ADC1_INIT_CODE_ATTEN1[0],    		// ADC1 init code at atten1
+    NULL
+};
+
+const esp_efuse_desc_t* ESP_EFUSE_ADC1_INIT_CODE_ATTEN2[] = {
+    &ADC1_INIT_CODE_ATTEN2[0],    		// ADC1 init code at atten2
+    NULL
+};
+
+const esp_efuse_desc_t* ESP_EFUSE_ADC1_INIT_CODE_ATTEN3[] = {
+    &ADC1_INIT_CODE_ATTEN3[0],    		// ADC1 init code at atten3
+    NULL
+};
+
+const esp_efuse_desc_t* ESP_EFUSE_ADC1_CAL_VOL_ATTEN0[] = {
+    &ADC1_CAL_VOL_ATTEN0[0],    		// ADC1 calibration voltage at atten0
+    NULL
+};
+
+const esp_efuse_desc_t* ESP_EFUSE_ADC1_CAL_VOL_ATTEN1[] = {
+    &ADC1_CAL_VOL_ATTEN1[0],    		// ADC1 calibration voltage at atten1
+    NULL
+};
+
+const esp_efuse_desc_t* ESP_EFUSE_ADC1_CAL_VOL_ATTEN2[] = {
+    &ADC1_CAL_VOL_ATTEN2[0],    		// ADC1 calibration voltage at atten2
+    NULL
+};
+
+const esp_efuse_desc_t* ESP_EFUSE_ADC1_CAL_VOL_ATTEN3[] = {
+    &ADC1_CAL_VOL_ATTEN3[0],    		// ADC1 calibration voltage at atten3
     NULL
 };
 

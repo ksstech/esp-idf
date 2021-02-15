@@ -15,6 +15,7 @@
 #define SOC_ULP_SUPPORTED               1
 #define SOC_RTC_SLOW_MEM_SUPPORTED      1
 #define SOC_CCOMP_TIMER_SUPPORTED       1
+#define SOC_EFUSE_SECURE_BOOT_KEY_DIGESTS 3
 
 
 /*-------------------------- ADC CAPS ----------------------------------------*/
@@ -116,7 +117,7 @@
 #define SOC_SHA_SUPPORT_RESUME          (1)
 
 /* Has a centralized DMA, which is shared with all peripherals */
-#define SOC_SHA_GENERAL_DMA             (1)
+#define SOC_SHA_GDMA             (1)
 
 /* Supported HW algorithms */
 #define SOC_SHA_SUPPORT_SHA1            (1)
@@ -143,8 +144,15 @@
 /*-------------------------- AES CAPS -----------------------------------------*/
 #define SOC_AES_SUPPORT_DMA     (1)
 
+/*-------------------------- Power Management CAPS ---------------------------*/
+#define SOC_PM_SUPPORT_EXT_WAKEUP       (1)
+
+#define SOC_PM_SUPPORT_WIFI_WAKEUP      (1)
+
+#define SOC_PM_SUPPORT_BT_WAKEUP        (1)
+
 /* Has a centralized DMA, which is shared with all peripherals */
-#define SOC_AES_GENERAL_DMA     (1)
+#define SOC_AES_GDMA            (1)
 
 #define SOC_AES_SUPPORT_AES_128 (1)
 #define SOC_AES_SUPPORT_AES_256 (1)
@@ -155,3 +163,15 @@
 #define SOC_GDMA_SPI3_DMA_CHANNEL (2)
 #define SOC_GDMA_SHA_DMA_CHANNEL  (3)
 #define SOC_GDMA_AES_DMA_CHANNEL  (4)
+
+/*-------------------------- WI-FI HARDWARE TSF CAPS -------------------------------*/
+#define SOC_WIFI_HW_TSF                 (1)
+
+
+/*-------------------------- SPI MEM CAPS ---------------------------------------*/
+#define SOC_SPI_MEM_SUPPORT_AUTO_WAIT_IDLE                (1)
+#define SOC_SPI_MEM_SUPPORT_AUTO_SUSPEND                  (1)
+#define SOC_SPI_MEM_SUPPORT_AUTO_RESUME                   (1)
+#define SOC_SPI_MEM_SUPPORT_SW_SUSPEND                    (1)
+/*-------------------------- COEXISTENCE HARDWARE PTI CAPS -------------------------------*/
+#define SOC_COEX_HW_PTI                 (1)

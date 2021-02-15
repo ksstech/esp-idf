@@ -66,6 +66,10 @@ menu "SPI Flash driver"
             If making this as "y" in your project, you will increase free IRAM.
             But you may miss out on some flash features and support for new flash chips.
 
+            Currently the ROM cannot support the following features:
+
+            - SPI_FLASH_AUTO_SUSPEND (C3, S3)
+
     choice SPI_FLASH_DANGEROUS_WRITE
         bool  "Writing to dangerous flash regions"
         default SPI_FLASH_DANGEROUS_WRITE_ABORTS
@@ -137,11 +141,22 @@ menu "SPI Flash driver"
             then it will yield CPUs after finishing a current command.
 
     config SPI_FLASH_ERASE_YIELD_TICKS
-        int "CPU release time (tick)"
+        int "CPU release time (tick) for an erase operation"
         depends on SPI_FLASH_YIELD_DURING_ERASE
         default 1
         help
             Defines how many ticks will be before returning to continue a erasing.
+
+    config SPI_FLASH_AUTO_SUSPEND
+        bool "Auto suspend long erase/write operations"
+        default n if !IDF_TARGET_ESP32C3
+        default y if IDF_TARGET_ESP32C3
+        depends on IDF_TARGET_ESP32C3 && !SPI_FLASH_USE_LEGACY_IMPL && !SPI_FLASH_ROM_IMPL
+        help
+            This option is default n before ESP32-C3, because it needs bootloader support.
+
+            CAUTION: If you want to OTA to an app with this feature turned on, please make
+            sure the bootloader has the support for it. (later than IDF v4.3)
 
     config SPI_FLASH_WRITE_CHUNK_SIZE
         int "Flash write chunk size"
@@ -208,6 +223,24 @@ menu "SPI Flash driver"
                 given by ``chip_drv`` member of the chip struct. This adds support for variant
                 chips, however will extend detecting time.
 
+        config SPI_FLASH_SUPPORT_BOYA_CHIP
+            bool "BOYA"
+            depends on !IDF_TARGET_ESP32
+            default y
+            help
+                Enable this to support auto detection of BOYA chips if chip vendor not directly
+                given by ``chip_drv`` member of the chip struct. This adds support for variant
+                chips, however will extend detecting time.
+
     endmenu #auto detect flash chips
+
+    config SPI_FLASH_ENABLE_ENCRYPTED_READ_WRITE
+        bool "Enable encrypted partition read/write operations"
+        default y
+        help
+            This option enables flash read/write operations to encrypted partition/s. This option
+            is kept enabled irrespective of state of flash encryption feature. However, in case
+            application is not using flash encryption feature and is in need of some additional
+            memory from IRAM region (~1KB) then this config can be disabled.
 
 endmenu

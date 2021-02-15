@@ -1,4 +1,4 @@
-{ Copyright 2019-2020 Espressif Systems (Shanghai) CO LTD
+{ Copyright 2019-2021 Espressif Systems (Shanghai) CO LTD
   SPDX-License-Identifier: Apache-2.0 }
 
 { ------------------------------ Custom steps before the main installation flow ------------------------------ }
@@ -45,17 +45,6 @@ begin
 
   ForceDirectories(ExpandConstant('{app}\dist'));
 
-  if not PythonUseExisting then
-  begin
-    DestPath := ExpandConstant('{app}\dist\{#PythonInstallerName}');
-    if FileExists(DestPath) then
-    begin
-      Log('Python installer already downloaded: ' + DestPath);
-    end else begin
-      idpAddFile('{#PythonInstallerDownloadURL}', DestPath);
-    end;
-  end;
-
   if not GitUseExisting then
   begin
     DestPath := ExpandConstant('{app}\dist\{#GitInstallerName}');
@@ -82,9 +71,6 @@ var
 begin
   EnvPath := GetEnv('PATH');
 
-  if not PythonUseExisting then
-    PythonExecutablePathUpdateAfterInstall();
-
   if not GitUseExisting then
     GitExecutablePathUpdateAfterInstall();
 
@@ -103,6 +89,26 @@ begin
   SetEnvironmentVariable('PYTHONPATH', '')
 end;
 
+procedure InstallEmbeddedPython();
+var
+  EmbeddedPythonPath: String;
+  CmdLine: String;
+begin
+  if (Pos('tools', PythonPath) <> 1) then begin
+    Exit;
+  end;
+
+  EmbeddedPythonPath := ExpandConstant('{app}\') + PythonExecutablePath;
+  UpdatePythonVariables(EmbeddedPythonPath);
+  Log('Checking existence of Embedded Python: ' + EmbeddedPythonPath);
+  if (FileExists(EmbeddedPythonPath)) then begin
+    Exit;
+  end;
+
+  CmdLine := ExpandConstant('{tmp}\7za.exe x -o{app}\tools\python\' + PythonVersion + '\ -r -aoa "{app}\dist\idf-python-' + PythonVersion + '-embed-win64.zip"');
+  DoCmdlineInstall('Extracting Python Interpreter', 'Using Embedded Python', CmdLine);
+end;
+
 <event('CurStepChanged')>
 procedure PostInstallSteps(CurStep: TSetupStep);
 var
@@ -110,6 +116,9 @@ var
 begin
   if CurStep <> ssPostInstall then
     exit;
+
+  ExtractTemporaryFile('7za.exe')
+  InstallEmbeddedPython();
 
   try
     AddPythonGitToPath();
@@ -125,14 +134,24 @@ begin
     IDFToolsSetup();
 
 
-  if WizardIsTaskSelected('createlnk') then
+  if WizardIsTaskSelected('CreateLnkStartCmd') then
   begin
     CreateIDFCommandPromptShortcut('{autostartmenu}\Programs\ESP-IDF');
   end;
 
-  if WizardIsTaskSelected('createdsk') then
+  if WizardIsTaskSelected('CreateLnkStartPs') then
+  begin
+    CreateIDFPowershellShortcut('{autostartmenu}\Programs\ESP-IDF' );
+  end;
+
+  if WizardIsTaskSelected('CreateLnkDeskCmd') then
   begin
     CreateIDFCommandPromptShortcut('{autodesktop}');
+  end;
+
+  if WizardIsTaskSelected('CreateLnkDeskPs') then
+  begin
+    CreateIDFPowershellShortcut('{autodesktop}');
   end;
 
   if WizardIsTaskSelected('wdexcl') then
@@ -160,4 +179,15 @@ begin
   begin
     Result := SetupAborted;
   end;
+end;
+
+
+function IsPowerShellInstalled(): Boolean;
+begin
+  Result := ((not SetupAborted) and (WizardIsTaskSelected('CreateLnkDeskPs') or WizardIsTaskSelected('CreateLnkStartPs')));
+end;
+
+function IsCmdInstalled(): Boolean;
+begin
+  Result := ((not SetupAborted) and (WizardIsTaskSelected('CreateLnkDeskCmd') or WizardIsTaskSelected('CreateLnkStartCmd')));
 end;

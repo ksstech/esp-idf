@@ -63,6 +63,7 @@
 #include "esp32s3/rom/cache.h"
 #include "esp32c3/rom/rtc.h"
 #include "soc/cache_memory.h"
+#include "esp32c3/memprot.h"
 #endif
 
 #include "bootloader_flash_config.h"
@@ -84,11 +85,20 @@
 
 #include "bootloader_mem.h"
 
-#if CONFIG_IDF_TARGET_ESP32
 #if CONFIG_APP_BUILD_TYPE_ELF_RAM
+#if CONFIG_IDF_TARGET_ESP32
 #include "esp32/rom/spi_flash.h"
+#endif // CONFIG_IDF_TARGET_ESP32
+#if CONFIG_IDF_TARGET_ESP32S2
+#include "esp32s2/rom/spi_flash.h"
+#endif // CONFIG_IDF_TARGET_ESP32S2
+#if CONFIG_IDF_TARGET_ESP32S3
+#include "esp32s3/rom/spi_flash.h"
+#endif // CONFIG_IDF_TARGET_ESP32S3
+#if CONFIG_IDF_TARGET_ESP32C3
+#include "esp32c3/rom/spi_flash.h"
+#endif // CONFIG_IDF_TARGET_ESP32C3
 #endif // CONFIG_APP_BUILD_TYPE_ELF_RAM
-#endif
 
 #include "esp_private/startup_internal.h"
 #include "esp_private/system_internal.h"
@@ -253,11 +263,11 @@ void IRAM_ATTR call_start_cpu0(void)
     // (This should be the first thing IDF app does, as any other piece of code could be
     // relaxed by the linker to access something relative to __global_pointer$)
     __asm__ __volatile__ (
-    	".option push\n"
+        ".option push\n"
         ".option norelax\n"
         "la gp, __global_pointer$\n"
         ".option pop"
-                          );
+    );
 #endif
 
     // Move exception vectors to IRAM
@@ -446,6 +456,7 @@ void IRAM_ATTR call_start_cpu0(void)
 #if CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32C3
     clock_hz = UART_CLK_FREQ_ROM; // From esp32-s3 on, UART clock source is selected to XTAL in ROM
 #endif
+    esp_rom_uart_tx_wait_idle(CONFIG_ESP_CONSOLE_UART_NUM);
     esp_rom_uart_set_clock_baudrate(CONFIG_ESP_CONSOLE_UART_NUM, clock_hz, CONFIG_ESP_CONSOLE_UART_BAUDRATE);
 #endif
 
@@ -453,13 +464,11 @@ void IRAM_ATTR call_start_cpu0(void)
 
     esp_cache_err_int_init();
 
-#if CONFIG_IDF_TARGET_ESP32S2
-#if CONFIG_ESP32S2_MEMPROT_FEATURE
-#if CONFIG_ESP32S2_MEMPROT_FEATURE_LOCK
+#if CONFIG_ESP_SYSTEM_MEMPROT_FEATURE
+#if CONFIG_ESP_SYSTEM_MEMPROT_FEATURE_LOCK
     esp_memprot_set_prot(true, true, NULL);
 #else
     esp_memprot_set_prot(true, false, NULL);
-#endif
 #endif
 #endif
 

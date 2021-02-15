@@ -104,6 +104,9 @@ wifi_cipher_type_t cipher_type_map_supp_to_public(unsigned wpa_cipher)
     case WPA_CIPHER_AES_128_CMAC:
         return WIFI_CIPHER_TYPE_AES_CMAC128;
 
+    case WPA_CIPHER_SMS4:
+        return WIFI_CIPHER_TYPE_SMS4;
+
     default:
         return WIFI_CIPHER_TYPE_UNKNOWN;
     }
@@ -132,6 +135,9 @@ unsigned cipher_type_map_public_to_supp(wifi_cipher_type_t cipher)
 
     case WIFI_CIPHER_TYPE_AES_CMAC128:
         return WPA_CIPHER_AES_128_CMAC;
+
+    case WIFI_CIPHER_TYPE_SMS4:
+        return WPA_CIPHER_SMS4;
 
     default:
         return WPA_CIPHER_NONE;
@@ -663,11 +669,11 @@ int   wpa_supplicant_install_ptk(struct wpa_sm *sm)
 
     switch (sm->pairwise_cipher) {
     case WPA_CIPHER_CCMP:
-        alg = WPA_ALG_CCMP;
+        alg = WIFI_WPA_ALG_CCMP;
         keylen = 16;
         break;
     case WPA_CIPHER_TKIP:
-        alg = WPA_ALG_TKIP;
+        alg = WIFI_WPA_ALG_TKIP;
         keylen = 32;
         break;
     case WPA_CIPHER_NONE:
@@ -720,7 +726,7 @@ int   wpa_supplicant_check_group_cipher(int group_cipher,
             break;
         }
         *key_rsc_len = 6;
-        *alg = WPA_ALG_CCMP;
+        *alg = WIFI_WPA_ALG_CCMP;
         break;
     case WPA_CIPHER_TKIP:
         if (keylen != 32 || maxkeylen < 32) {
@@ -728,7 +734,7 @@ int   wpa_supplicant_check_group_cipher(int group_cipher,
             break;
         }
         *key_rsc_len = 6;
-        *alg = WPA_ALG_TKIP;
+        *alg = WIFI_WPA_ALG_TKIP;
         break;
     case WPA_CIPHER_WEP104:
         if (keylen != 13 || maxkeylen < 13) {
@@ -736,7 +742,7 @@ int   wpa_supplicant_check_group_cipher(int group_cipher,
             break;
         }
         *key_rsc_len = 0;
-        *alg = WPA_ALG_WEP104;
+        *alg = WIFI_WPA_ALG_WEP104;
         break;
     case WPA_CIPHER_WEP40:
         if (keylen != 5 || maxkeylen < 5) {
@@ -744,7 +750,7 @@ int   wpa_supplicant_check_group_cipher(int group_cipher,
             break;
         }
         *key_rsc_len = 0;
-        *alg = WPA_ALG_WEP40;
+        *alg = WIFI_WPA_ALG_WEP40;
         break;
     default:
         #ifdef DEBUG_PRINT
@@ -1023,7 +1029,7 @@ int   ieee80211w_set_keys(struct wpa_sm *sm,
 		if (keyidx > 4095) {
 			return -1;
 		}
-		return esp_wifi_set_igtk_internal(ESP_IF_WIFI_STA, igtk);
+		return esp_wifi_set_igtk_internal(WIFI_IF_STA, igtk);
 	}
 	return 0;
 #else
@@ -2063,6 +2069,7 @@ bool wpa_sm_init(char * payload, WPA_SEND_FUNC snd_func,
                    WPA_NEG_COMPLETE wpa_neg_complete)
 {
     struct wpa_sm *sm = &gWpaSm;
+    u16 spp_attrubute = 0;
 
     sm->eapol_version = 0x1;   /* DEFAULT_EAPOL_VERSION */
     sm->sendto = snd_func;
@@ -2073,6 +2080,11 @@ bool wpa_sm_init(char * payload, WPA_SEND_FUNC snd_func,
     sm->wpa_neg_complete = wpa_neg_complete;
     sm->key_entry_valid = 0;
     sm->key_install = false;
+
+    spp_attrubute = esp_wifi_get_spp_attrubute_internal(WIFI_IF_STA);
+    sm->spp_sup.capable = ((spp_attrubute & WPA_CAPABILITY_SPP_CAPABLE) ? SPP_AMSDU_CAP_ENABLE : SPP_AMSDU_CAP_DISABLE);
+    sm->spp_sup.require = ((spp_attrubute & WPA_CAPABILITY_SPP_REQUIRED) ? SPP_AMSDU_CAP_ENABLE : SPP_AMSDU_REQ_DISABLE);
+
     wpa_sm_set_state(WPA_INACTIVE);
 
     sm->pmksa = pmksa_cache_init(wpa_sm_pmksa_free_cb, sm, sm);
@@ -2107,6 +2119,8 @@ void wpa_set_profile(u32 wpa_proto, u8 auth_mode)
         sm->key_mgmt = WPA_KEY_MGMT_PSK_SHA256;
     } else if (auth_mode == WPA3_AUTH_PSK) {
          sm->key_mgmt = WPA_KEY_MGMT_SAE; /* for WPA3 PSK */
+    } else if (auth_mode == WAPI_AUTH_PSK) {
+         sm->key_mgmt = WPA_KEY_MGMT_WAPI_PSK; /* for WAPI PSK */
     } else {
         sm->key_mgmt = WPA_KEY_MGMT_PSK;  /* fixed to PSK for now */
     }
@@ -2163,7 +2177,7 @@ int wpa_set_bss(char *macddr, char * bssid, u8 pairwise_cipher, u8 group_cipher,
     if (esp_wifi_sta_pmf_enabled()) {
         wifi_config_t wifi_cfg;
 
-        esp_wifi_get_config(ESP_IF_WIFI_STA, &wifi_cfg);
+        esp_wifi_get_config(WIFI_IF_STA, &wifi_cfg);
         sm->pmf_cfg = wifi_cfg.sta.pmf_cfg;
         sm->mgmt_group_cipher = cipher_type_map_public_to_supp(esp_wifi_sta_get_mgmt_group_cipher());
     } else {
@@ -2245,7 +2259,7 @@ wpa_sm_set_key(struct install_key *key_sm, enum wpa_alg alg,
     struct wpa_sm *sm = &gWpaSm;
 
     /*gtk or ptk both need check countermeasures*/
-    if (alg == WPA_ALG_TKIP && key_len == 32) {
+    if (alg == WIFI_WPA_ALG_TKIP && key_len == 32) {
         /* Clear the MIC error counter when setting a new PTK. */
         key_sm->mic_errors_seen = 0;
     }

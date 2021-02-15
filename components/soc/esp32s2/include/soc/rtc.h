@@ -102,7 +102,7 @@ extern "C" {
 #define RTC_CNTL_PLL_BUF_WAIT_DEFAULT  20
 #define RTC_CNTL_XTL_BUF_WAIT_DEFAULT  100
 #define RTC_CNTL_CK8M_WAIT_DEFAULT  20
-#define RTC_CK8M_ENABLE_WAIT_DEFAULT 1
+#define RTC_CK8M_ENABLE_WAIT_DEFAULT 5
 
 /* Various delays to be programmed into power control state machines */
 #define RTC_CNTL_PLL_BUF_WAIT_SLP_CYCLES    (1)
@@ -244,9 +244,9 @@ typedef struct {
 } x32k_config_t;
 
 #define X32K_CONFIG_DEFAULT() { \
-    .dac = 1, \
+    .dac = 3, \
     .dres = 3, \
-    .dgm = 0, \
+    .dgm = 3, \
     .dbuf = 1, \
 }
 

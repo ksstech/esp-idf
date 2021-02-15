@@ -30,11 +30,11 @@ if(NOT BOOTLOADER_BUILD)
                 "sha_hal.c"
                 "aes_hal.c"
                 "twai_hal.c"
-                "twai_hal_iram.c")
+                "twai_hal_iram.c"
+                "adc_hal.c")
 
     if(${target} STREQUAL "esp32")
         list(APPEND srcs
-                    "adc_hal.c"
                     "dac_hal.c"
                     "mcpwm_hal.c"
                     "pcnt_hal.c"
@@ -52,7 +52,6 @@ if(NOT BOOTLOADER_BUILD)
 
     if(${target} STREQUAL "esp32s2")
         list(APPEND srcs
-                    "adc_hal.c"
                     "dac_hal.c"
                     "pcnt_hal.c"
                     "spi_flash_hal_gpspi.c"
@@ -65,12 +64,12 @@ if(NOT BOOTLOADER_BUILD)
                     "esp32s2/touch_sensor_hal.c"
                     "esp32s2/dac_hal.c"
                     "esp32s2/interrupt_descriptor_table.c"
-                    "esp32s2/usb_hal.c")
+                    "esp32s2/usb_hal.c"
+                    "esp32s2/usbh_hal.c")
     endif()
 
     if(${target} STREQUAL "esp32s3")
         list(APPEND srcs
-            "adc_hal.c"
             "dac_hal.c"
             "gdma_hal.c"
             "pcnt_hal.c"
@@ -92,7 +91,8 @@ if(NOT BOOTLOADER_BUILD)
               "esp32c3/systimer_hal.c"
               "esp32c3/hmac_hal.c"
               "spi_flash_hal_gpspi.c"
-              "spi_slave_hd_hal.c")
+              "spi_slave_hd_hal.c"
+              "esp32c3/rtc_cntl_hal.c")
     endif()
 endif()
 

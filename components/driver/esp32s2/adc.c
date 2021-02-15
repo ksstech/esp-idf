@@ -74,6 +74,10 @@ esp_err_t adc_digi_init(void)
     adc_hal_init();
     adc_hal_arbiter_config(&config);
     ADC_EXIT_CRITICAL();
+
+    adc_hal_calibration_init(ADC_NUM_1);
+    adc_hal_calibration_init(ADC_NUM_2);
+
     return ESP_OK;
 }
 
@@ -460,10 +464,12 @@ uint32_t adc_get_calibration_offset(adc_ll_num_t adc_n, adc_channel_t channel, a
         int tag = esp_efuse_rtc_table_get_tag(version, adc_n + 1, atten, RTCCALIB_V2_PARAM_VINIT);
         dout = esp_efuse_rtc_table_get_parsed_efuse_value(tag, false);
     } else {
-        const bool internal_gnd = true;
+        adc_power_acquire();
         ADC_ENTER_CRITICAL();
+        const bool internal_gnd = true;
         dout = adc_hal_self_calibration(adc_n, channel, atten, internal_gnd);
         ADC_EXIT_CRITICAL();
+        adc_power_release();
     }
     ESP_LOGD(ADC_TAG, "Calib(V%d) ADC%d atten=%d: %04X", version, adc_n, atten, dout);
     s_adc_cali_param[adc_n][atten] = (uint16_t)dout;
@@ -472,6 +478,7 @@ uint32_t adc_get_calibration_offset(adc_ll_num_t adc_n, adc_channel_t channel, a
 
 esp_err_t adc_cal_offset(adc_ll_num_t adc_n, adc_channel_t channel, adc_atten_t atten)
 {
+    adc_hal_calibration_init(adc_n);
     uint32_t cal_val = adc_get_calibration_offset(adc_n, channel, atten, false);
     ADC_ENTER_CRITICAL();
     adc_hal_set_calibration_param(adc_n, cal_val);

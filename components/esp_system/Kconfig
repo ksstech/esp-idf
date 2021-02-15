@@ -71,7 +71,10 @@ menu "ESP System Settings"
 
     config ESP_SYSTEM_ALLOW_RTC_FAST_MEM_AS_HEAP
         bool "Enable RTC fast memory for dynamic allocations"
-        default y
+        default y if IDF_TARGET_ESP32
+        default y if IDF_TARGET_ESP32S2
+        default y if IDF_TARGET_ESP32C3
+        default n if IDF_TARGET_ESP32S3  # TODO
         depends on ESP_SYSTEM_RTC_FAST_MEM_AS_HEAP_DEPCHECK
         help
             This config option allows to add RTC fast memory region to system heap with capability
@@ -86,5 +89,37 @@ menu "ESP System Settings"
         help
             If enabled, chip will try to power down flash at light sleep, which costs more time when chip wakes up.
             Only can be enabled if there is no SPIRAM configured.
+
+    config ESP_SYSTEM_PM_POWER_DOWN_CPU
+        bool "Power down CPU in light sleep"
+        depends on IDF_TARGET_ESP32C3
+        default y
+        help
+            If enabled, the CPU will be powered down in light sleep. Enabling this option will consume
+            1.68 KB of internal RAM and will reduce sleep current consumption by about 100 uA.
+
+    menu "Memory protection"
+
+        config ESP_SYSTEM_MEMPROT_FEATURE
+            bool "Enable memory protection"
+            depends on IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32S2
+            default "y"
+            help
+                If enabled, the permission control module watches all the memory access and fires the panic handler
+                if a permission violation is detected. This feature automatically splits
+                the SRAM memory into data and instruction segments and sets Read/Execute permissions
+                for the instruction part (below given splitting address) and Read/Write permissions
+                for the data part (above the splitting address). The memory protection is effective
+                on all access through the IRAM0 and DRAM0 buses.
+
+        config ESP_SYSTEM_MEMPROT_FEATURE_LOCK
+            depends on ESP_SYSTEM_MEMPROT_FEATURE
+            bool "Lock memory protection settings"
+            default "y"
+            help
+                Once locked, memory protection settings cannot be changed anymore.
+                The lock is reset only on the chip startup.
+
+    endmenu  # Memory protection
 
 endmenu  # ESP System Settings

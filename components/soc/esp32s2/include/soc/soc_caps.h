@@ -48,15 +48,18 @@
 #define SOC_ULP_SUPPORTED               1
 #define SOC_RTC_SLOW_MEM_SUPPORTED      1
 #define SOC_CCOMP_TIMER_SUPPORTED       1
+#define SOC_EFUSE_SECURE_BOOT_KEY_DIGESTS 3
 
 #define SOC_CACHE_SUPPORT_WRAP          1
 
 /*-------------------------- ADC CAPS ----------------------------------------*/
 #define SOC_ADC_PERIPH_NUM              (2)
 #define SOC_ADC_PATT_LEN_MAX            (16)
-
 #define SOC_ADC_CHANNEL_NUM(PERIPH_NUM) (10)
 #define SOC_ADC_MAX_CHANNEL_NUM         (10)
+#define SOC_ADC_MAX_BITWIDTH            (13)
+#define SOC_ADC_HW_CALIBRATION_V1       (1) /*!< support HW offset calibration */
+
 
 /**
  * Check if adc support digital controller (DMA) mode.
@@ -65,6 +68,7 @@
  *      - 0 : not support;
  */
 #define SOC_ADC_SUPPORT_DMA_MODE(PERIPH_NUM) ((PERIPH_NUM==0)? 1: 1)
+#define SOC_ADC_SUPPORT_RTC_CTRL        1
 
 /*-------------------------- BROWNOUT CAPS -----------------------------------*/
 #define SOC_BROWNOUT_RESET_SUPPORTED 1
@@ -295,6 +299,14 @@
 /*-------------------------- WI-FI HARDWARE TSF CAPS -------------------------------*/
 #define SOC_WIFI_HW_TSF                 (1)
 
+/*-------------------------- SPI MEM CAPS ---------------------------------------*/
+#define SOC_SPI_MEM_SUPPORT_AUTO_WAIT_IDLE                (1)
+#define SOC_SPI_MEM_SUPPORT_AUTO_SUSPEND                  (1)
+#define SOC_SPI_MEM_SUPPORT_SW_SUSPEND                    (1)
+/*-------------------------- Power Management CAPS ---------------------------*/
+#define SOC_PM_SUPPORT_EXT_WAKEUP       (1)
+
+#define SOC_PM_SUPPORT_WIFI_WAKEUP      (1)
 
 /* ---------------------------- Compatibility ------------------------------- */
 // No contents
