@@ -21,7 +21,7 @@ int32_t printfx(const char *, ...) ;
 #define	xpfSGR(a,b,c,d)		(((uint8_t) a << 24) + ((uint8_t) b << 16) + ((uint8_t) c << 8) + (uint8_t) d)
 
 void	halMCU_ReportMemory(uint32_t caps) {
-    printfx("%C TotBlk|UsedBlk|FreeBlk| LF_Blk| FromAddr | Size  | Used  | MinFr | Free  |%C0x%04x", xpfSGR(attrRESET, attrFG_CYAN, 0, 0), xpfSGR(attrRESET, 0, 0, 0), caps) ;
+    printfx("%C TotBlk|UsedBlk|FreeBlk| LF_Blk| FromAddr | Size  | Used  | MinFr | Free  |%C0x%04x", xpfSGR(attrFG_CYAN, 0, 0, 0), xpfSGR(attrRESET, 0, 0, 0), caps) ;
     if (caps & MALLOC_CAP_IRAM_8BIT)	printfx(" IRAM-8B") ;
     if (caps & MALLOC_CAP_DEFAULT)		printfx(" Default") ;
     if (caps & MALLOC_CAP_INTERNAL)		printfx(" Internal") ;
