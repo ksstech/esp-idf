@@ -197,10 +197,10 @@ esp_err_t _esp_wifi_set_default_wifi_handlers(void)
         goto fail;
     }
 
-    err = esp_register_shutdown_handler((shutdown_handler_t)esp_wifi_stop);
+/*    err = esp_register_shutdown_handler((shutdown_handler_t)esp_wifi_stop);
     if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
         goto fail;
-    }
+    }*/
     wifi_default_handlers_set = true;
     return ESP_OK;
 
